@@ -2,6 +2,10 @@
 
 Multi tenancy - multi user management for Kubernetes.
 
+## Motivation
+
+Kubermatic and KubeCarrier both need a system to manage users, projects and RBAC. In Kubermatic this functionallity is currently handled
+
 ## Issues
 
 ### Owners cannot kill their own permissions
