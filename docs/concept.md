@@ -2,44 +2,51 @@
 
 Multi tenancy - multi user management for Kubernetes.
 
-## Motivation
+## Introduction
 
-Kubermatic and KubeCarrier both need a system to manage users, projects and RBAC. In Kubermatic this functionallity is currently handled
+Both Kubermatic and KubeCarrier need a system to manage multiple independent users, their projects and RBAC permissions.
 
-## Issues
+Kubermatic is currently handling this functionality with custom code in the kubermatic apiserver. While the same pattern could be used for KubeCarrier, the code cannot be directly reused.
 
-### Owners cannot kill their own permissions
+KubeCarrier is currently offloading all RBAC and user management into Kubernetes by managing multiple Namespaces and creating RBAC Roles and RoleBindings. Although to support more advanced use cases, this system needs to be heavily extended.
 
-Owner permissions are reconciled, if deleted or altered. A validating webhook will prevent the last owner from beeing removed.
+## Requirements
 
-### Users can only see organizations and projects they are assigned to
+1. Organization level to group multiple projects for common access control
+2. Project level to group "things" (Kubermatic User Clusters or KubeCarrier Service Instances)
+3. Users can manage their own Projects and Organizations (Create, Update, Delete...)
+4. Audit Logging (Kubernetes Knows the real user)
+5. Users can manage custom Roles within their Organizations/Projects
+6. Users can not orphan a project or Organization (leave a project/organization without owners)
+
+## Features
+
+### Users can manage their own Projects and Organizations
 
 `Organization` and `Project` objects are exposed via a kubernetes extension API server. This extension API server will use the authenticated username to filter the list of `Organizations` and `Projects` to only contain items that the user is part of.
 
-A user is part of a project if:
-- he is one of the Owners
-- he is referenced in a `RoleBinding` within the `Organization` or `Project`, beeing referenced in the `Project` will also allow the user to see the `Organization`.
+Users is part of a project if:
+- they are one of the Owners
+- they are referenced in a `RoleBinding` within the `Organization` or `Project`, being referenced in the `Project` will also allow the user to see the `Organization`.
 
-### Extension API needs it's own etcd
+### Users can manage custom Roles within their Organizations/Projects
 
-Yes, but actually no. There are examples, where we can use CRDs (or annotations of k8s objects) as backend storage for our own API, so we don't require another etcd as storage.
+Organization and project owners are automatically granted permission to create new `Role` and `RoleBinding` objects. The Kubernetes API Server ensures safety against privilege escalation.
 
-Thats why we have `Organization` and `InternalOrganization`, `Organization` is meant to be exposed to users via the apiserver, while `InternalOrganization` objects are just for storing data.
+Other users are managed via `RoleBindings`.
 
-### Organization names can be set by enduser
+### Users can not orphan a project or Organization
+
+Owner permissions are reconciled, if deleted or altered. A validating webhook will prevent the last owner of an Organization or Project from being removed.
+
+### Organization names can be set by end user
 
 As Organizations are kind-a Cluster-Scoped, users cannot set their own object name, or they can run into name conflicts with objects they cannot even see.
 
 To solve this, the cluster scoped `InternalOrganization` object is always using `generateName` and gets a `bulward.io/name` label with the original object name.
-The extension apiserver will expose `Organization` objects with the original name, making this intransparent to the APIs user.
+The extension apiserver will expose `Organization` objects with the original name, making this nontransparent to the APIs user.
 
-### Organization/Project Owners can manage their own Roles
-
-Organization and project owners are automatically granted permission to create new `Role` and `RoleBinding` objects. The Kubernetes API Server ensures safty against priviledge escalation.
-
-Other users are managed via `RoleBindings`.
-
-### Extenable Default Roles for Organizations and Projects
+### Extensible Default Roles for Organizations and Projects
 
 Tools like Kubermatic and KubeCarrier will bring their own default roles and permissions, or are even managing dynamic Roles depending on available CRDs (KubeCarrier).
 Bulward should make it easy to integrate these Roles without needing deep integrations.
@@ -50,11 +57,17 @@ Bulward should make it easy to integrate these Roles without needing deep integr
 
 Users and Service Accounts are interacting with the kube-apiserver using their username/tokens, which can be used in concert with Kubernetes build-in Audit-Logging.
 
+### Extension API needs it's own etcd
+
+Yes, but actually no. There are examples, where we can use CRDs (or annotations of k8s objects) as backend storage for our own API, so we don't require another etcd as storage.
+
+Thats why we have `Organization` and `InternalOrganization`, `Organization` is meant to be exposed to users via the apiserver, while `InternalOrganization` objects are just for storing data.
+
 ## APIs
 
 ### Organization
 
-`Organization` objects are the top-level organisational objects in the multi-user hirachy that Bulward provides. Permissions to manage `Organizations` can be granted via normal `ClusterRoles` and `ClusterRoleBindings`.
+`Organization` objects are the top-level organizational objects in the multi-user hierarchy that Bulward provides. Permissions to manage `Organizations` can be granted via normal `ClusterRoles` and `ClusterRoleBindings`.
 
 Every Organization will have a Kubernetes Namespace assigned, which is used to interact with objects belonging to this Organization.
 
@@ -235,7 +248,7 @@ status:
     observedGeneration: 0
 ---
 # RBAC Admins can create new Roles and RoleBindings.
-# RoleBindings are checked by k8s, so priviledge escalation is not possible.
+# RoleBindings are checked by k8s, so privilege escalation is not possible.
 apiVersion: bulward.io/v1alpha1
 kind: OrganizationRoleTemplate
 metadata:
@@ -320,6 +333,6 @@ Users can create their own `Roles` and bind them to users `RoleBinding` as long 
 
 Although if permissions are removed from the `OrganizationRoleTemplates` or `ProjectRoleTemplate` custom Roles are unaltered (as they are not tracked by the system), so Users may retain access.
 
-### Possible Solution
+**Possible Solution**
 
 A solution to solve this, could be a custom controller altering user created roles (and removing rules that are revoked in the template via an intersect). This would also prevent users from creating `Roles` with rules that they are not allowed to bind to.
