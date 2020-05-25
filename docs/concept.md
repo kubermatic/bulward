@@ -327,6 +327,10 @@ status:
 
 ## Open Issues TBD
 
+### Orchestrating Projects across clusters
+
+Kubermatic is working across multiple Seed Clusters and the same namespace isolation needs to be setup in these Seed Clusters in order for us to fully utilize this project in Kubermatic.
+
 ### Cleanup/Revoke permissions removed from Template
 
 Users can create their own `Roles` and bind them to users `RoleBinding` as long as they don't exceed their own permission level (escalate is not allowed).
@@ -336,3 +340,34 @@ Although if permissions are removed from the `OrganizationRoleTemplates` or `Pro
 **Possible Solution**
 
 A solution to solve this, could be a custom controller altering user created roles (and removing rules that are revoked in the template via an intersect). This would also prevent users from creating `Roles` with rules that they are not allowed to bind to.
+
+## Feature Considerations
+
+### Setup Network Isolation - NetworkPolicies
+
+### Setup Quotas - ResourceQuotas
+
+### Cluster Resource Access
+
+Nodes and Persistent Volumes are Cluster-Level resources and for a general purpose multi tenancy solution, we probably want to look into this topic.
+e.g. Open Shift let's you assign Nodes to Projects via Selectors, so tenants can have dedicated nodes.
+
+## Other Projects
+
+Projects that are active in this field or solve similar issues.
+
+### Kubernetes Virtual Cluster - Alpha/Experimental
+
+VirtualCluster represents a new architecture to address various Kubernetes control plane isolation challenges. It extends existing namespace based Kubernetes multi-tenancy model by providing each tenant a cluster view. VirtualCluster completely leverages Kubernetes extendability and preserves full API compatibility. That being said, the core Kubernetes components are not modified in virtual cluster. [...]
+
+https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/virtualcluster
+
+### Kiosk - Alpha
+
+The core idea of kiosk is to use Kubernetes namespaces as isolated workspaces where tenant applications can run isolated from each other. To minimize admin overhead, cluster admins are supposed to configure kiosk which then becomes a self-service system for provisioning Kubernetes namespaces for tenants. [...]
+
+https://github.com/kiosk-sh/kiosk
+
+### OpenShift
+
+OpenShift implements some multi tenancy mechanisms and controllers to make large enterprise installations viable.
