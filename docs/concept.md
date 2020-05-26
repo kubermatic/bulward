@@ -362,6 +362,13 @@ VirtualCluster represents a new architecture to address various Kubernetes contr
 
 https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/virtualcluster
 
+### Kubernetes Hierarchical Namespace Controller
+
+Hierarchical namespaces make it easier for you to create and manage namespaces in your cluster. For example, you can create a hierarchical namespace under your team's namespace, even if you don't have cluster-level permission to create namespaces, and easily apply policies like RBAC and Network Policies across all namespaces in your team (e.g. a set of related microservices). [...]
+
+https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/hnc  
+Concept: https://docs.google.com/document/d/10MZfFfbQMm33CBboMq2bfrEtXkJQQT4-UH4DDXZRrKY
+
 ### Kiosk - Alpha
 
 The core idea of kiosk is to use Kubernetes namespaces as isolated workspaces where tenant applications can run isolated from each other. To minimize admin overhead, cluster admins are supposed to configure kiosk which then becomes a self-service system for provisioning Kubernetes namespaces for tenants. [...]
