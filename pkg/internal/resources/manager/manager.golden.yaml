@@ -26,12 +26,25 @@
           control-plane: controller-manager
       spec:
         containers:
-        - args:
-          - --enable-leader-election
-          command:
-          - /manager
-          image: controller:latest
+        - env:
+          - name: BULWARD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          image: quay.io/bulward/manager:latest
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: readiness-port
           name: manager
+          ports:
+          - containerPort: 9440
+            name: readiness-port
+            protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: readiness-port
           resources:
             limits:
               cpu: 100m

@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-tidy:
-	go mod tidy
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY manager .
+USER nonroot:nonroot
 
-generate:
-	@hack/codegen.sh
-	@FIX_GOLDEN=1 go test ./pkg/internal/resources/...
-
-test:
-	go test -race -v ./...
-.PHONY: test
-
-lint: generate
-	@hack/validate-directory-clean.sh
-	pre-commit run -a
-	golangci-lint run ./... --deadline=15m
+ENTRYPOINT ["/manager"]
