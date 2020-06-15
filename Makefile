@@ -14,3 +14,7 @@
 
 tidy:
 	go mod tidy
+
+generate:
+	@hack/codegen.sh
+	@FIX_GOLDEN=1 go test ./pkg/internal/resources/...

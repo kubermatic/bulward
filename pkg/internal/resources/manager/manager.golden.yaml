@@ -1,0 +1,42 @@
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    labels:
+      Bulward.io/role: manager
+      control-plane: controller-manager
+    name: bulward-manager-system
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
+      Bulward.io/role: manager
+      control-plane: controller-manager
+    name: bulward-manager-controller-manager
+    namespace: test3000
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        Bulward.io/role: manager
+        control-plane: controller-manager
+    template:
+      metadata:
+        labels:
+          Bulward.io/role: manager
+          control-plane: controller-manager
+      spec:
+        containers:
+        - args:
+          - --enable-leader-election
+          command:
+          - /manager
+          image: controller:latest
+          name: manager
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+        terminationGracePeriodSeconds: 10
