@@ -15,15 +15,10 @@
 tidy:
 	go mod tidy
 
-generate:
-	@hack/codegen.sh
-	@FIX_GOLDEN=1 go test ./pkg/internal/resources/...
-
 test:
 	go test -race -v ./...
 .PHONY: test
 
-lint: generate
-	@hack/validate-directory-clean.sh
+lint:
 	pre-commit run -a
 	golangci-lint run ./... --deadline=15m
