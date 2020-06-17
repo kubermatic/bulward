@@ -25,7 +25,7 @@ presubmits:
     clone_uri: ssh://git@github.com/kubermatic/bulward.git
     spec:
       containers:
-        - image: golang:1.14
+        - image: ubuntu:18.04
           imagePullPolicy: Always
           command:
             - echo "test"
