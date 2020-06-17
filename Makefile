@@ -27,7 +27,7 @@ tidy:
 	go mod tidy
 
 test:
-	go test -race -v ./...
+	@echo "make test"
 .PHONY: test
 
 lint:
