@@ -25,7 +25,7 @@ presubmits:
   clone_uri: ssh://git@github.com/kubermatic/bulward.git
   spec:
     containers:
-    - image: quay.io/bulward/test
+    - image: quay.io/kubecarrier/test
       imagePullPolicy: Always
       command:
       - make test
@@ -38,10 +38,10 @@ presubmits:
 - name: pull-bulward-lint
   always_run: true
   decorate: true
-  clone_uri: ssh://git@github.com/kubermatic/kubecarrier.git
+  clone_uri: ssh://git@github.com/kubermatic/bulward.git
   spec:
     containers:
-    - image: quay.io/bulward/test
+    - image: quay.io/kubecarrier/test
       imagePullPolicy: Always
       command:
       - make lint
