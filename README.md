@@ -1,6 +1,19 @@
 # Bulward
 
+<p align="center">
+  <img src="docs/img/Bulward.svg" width="700px" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/license/kubermatic/bulward"/>
+  <img src="https://img.shields.io/github/go-mod/go-version/kubermatic/bulward"/>
+</p>
+
+---
+
 Multi User/Project management for Kubernetes.
+
+---
 
 ## Project Status
 
