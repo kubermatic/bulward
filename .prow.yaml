@@ -28,7 +28,8 @@ presubmits:
     - image: quay.io/kubecarrier/test
       imagePullPolicy: Always
       command:
-      - make test
+      - make
+      - test
       env:
       - name: GO111MODULE
         value: "on"
@@ -44,7 +45,8 @@ presubmits:
     - image: quay.io/kubecarrier/test
       imagePullPolicy: Always
       command:
-      - make lint
+      - make
+      - lint
       env:
       - name: GO111MODULE
         value: "on"
