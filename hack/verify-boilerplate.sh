@@ -21,4 +21,4 @@ set -o pipefail
 REPO_ROOT=$(dirname "${BASH_SOURCE}")/..
 
 boilerDir="${REPO_ROOT}/hack/boilerplate"
-go run ${boilerDir}/boilerplate.go
+go run ${boilerDir}/boilerplate.go -verbose
