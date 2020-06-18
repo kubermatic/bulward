@@ -28,7 +28,8 @@ presubmits:
         - image: ubuntu:18.04
           imagePullPolicy: Always
           command:
-            - echo "test"
+            - echo
+            - "test"
           env:
             - name: GO111MODULE
               value: "on"
