@@ -87,7 +87,7 @@ status:
   namespace:
     name: loodse-xxx
   members:
-  # list of all members 
+  # list of all members
   # (owners + subjects referenced in RoleBindings in Organization and Project Namespaces)
   - kind: User
     name: hannibal@company.com
@@ -121,7 +121,7 @@ status:
   namespace:
     name: loodse-xxx
   members:
-  # list of all members 
+  # list of all members
   # (owners + subjects referenced in RoleBindings in Organization and Project Namespaces)
   - kind: User
     name: hannibal@company.com
@@ -159,7 +159,7 @@ status:
   namespace:
     name: project-01-xxx
   members:
-  # list of all members 
+  # list of all members
   # (owners + subjects referenced in RoleBindings in the Project Namespace)
   - kind: User
     name: hannibal@company.com
@@ -192,7 +192,7 @@ status:
   namespace:
     name: project-01-xxx
   members:
-  # list of all members 
+  # list of all members
   # (owners + subjects referenced in RoleBindings in the Project Namespace)
   - kind: User
     name: hannibal@company.com
@@ -366,7 +366,7 @@ https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/virtualcl
 
 Hierarchical namespaces make it easier for you to create and manage namespaces in your cluster. For example, you can create a hierarchical namespace under your team's namespace, even if you don't have cluster-level permission to create namespaces, and easily apply policies like RBAC and Network Policies across all namespaces in your team (e.g. a set of related microservices). [...]
 
-https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/hnc  
+https://github.com/kubernetes-sigs/multi-tenancy/tree/master/incubator/hnc
 Concept: https://docs.google.com/document/d/10MZfFfbQMm33CBboMq2bfrEtXkJQQT4-UH4DDXZRrKY
 
 ### Kiosk - Alpha
