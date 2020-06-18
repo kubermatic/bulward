@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+lint: pre-commit
+	golangci-lint run ./... --deadline=15m
+
+test:
+	go test -race -v ./...
+
 tidy:
 	go mod tidy
 
