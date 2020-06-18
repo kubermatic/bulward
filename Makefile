@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright 2020 The Bulward Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
-set -o nounset
-set -o pipefail
+lint: pre-commit
+	golangci-lint run ./... --deadline=15m
 
-REPO_ROOT=$(dirname "${BASH_SOURCE}")/..
+test:
+	go test -race -v ./...
 
-boilerDir="${REPO_ROOT}/hack/boilerplate"
-go run ${boilerDir}/boilerplate.go -verbose
+tidy:
+	go mod tidy
+
+pre-commit:
+	pre-commit run -a
