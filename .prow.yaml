@@ -55,6 +55,8 @@ presubmits:
                 requests:
                   cpu: 4
                   memory: 6Gi
+
+postsubmits:
   - name: post-bulward-test-image
     decorate: true
     clone_uri: ssh://git@github.com/kubermatic/bulward.git
