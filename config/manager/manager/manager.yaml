@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: manager
-        image: quay.io/bulward/manager:v1
+        image: manager
         env:
           - name: BULWARD_NAMESPACE
             valueFrom:
