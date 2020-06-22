@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IMAGE_ORG=quay.io/bulward
+IMAGE_ORG=quay.io/kubermatic
 
 lint: pre-commit
 	golangci-lint run ./... --deadline=15m
@@ -38,8 +38,8 @@ build-image-test: require-docker
 	@cp -a go.mod go.sum bin/image/test
 	@cp -a Makefile bin/image/test
 	@cp -a hack/verify-boilerplate.sh bin/image/test
-	@docker build -t ${IMAGE_ORG}/test bin/image/test
+	@docker build -t ${IMAGE_ORG}/bulward-test bin/image/test
 
 push-image-test: build-image-test require-docker
-	@docker push ${IMAGE_ORG}/test
-	@echo pushed ${IMAGE_ORG}/test
+	@docker push ${IMAGE_ORG}/bulward-test
+	@echo pushed ${IMAGE_ORG}/bulward-test

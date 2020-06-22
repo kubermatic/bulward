@@ -29,10 +29,10 @@ ENV PATH=${PATH}:/usr/local/go/bin:/root/go/bin
 ENV GO111MODULE=on
 RUN go env
 
-# binary will be $(go env GOPATH)/bin/golangci-lint
-RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.24.0
 RUN go get golang.org/x/tools/cmd/goimports
 RUN pip3 install pre-commit
+# binary will be $(go env GOPATH)/bin/golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
 
 WORKDIR /src
 
