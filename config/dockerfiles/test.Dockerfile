@@ -14,25 +14,32 @@
 
 # Should be build from the Makefile, `make build-image-test`
 
-FROM golang:1.14.2
+FROM ubuntu:18.04
 
 RUN apt-get -qq update && apt-get -qqy install \
+  apt-transport-https \
+  build-essential \
+  ca-certificates \
   curl \
-  zip \
-  python3-pip \
   git \
-  make \
+  python3-pip \
+  software-properties-common \
+  zip \
   && rm -rf /var/lib/apt/lists/*
 
+RUN curl -fsSL https://get.docker.com | sh
+RUN curl -sL https://dl.google.com/go/go1.14.linux-amd64.tar.gz | tar -C /usr/local -xz
 ENV PATH=${PATH}:/usr/local/go/bin:/root/go/bin
-# Allowed to use path@version
+# Allowed to use path@version syntax
 ENV GO111MODULE=on
 RUN go env
 
-RUN go get golang.org/x/tools/cmd/goimports
-RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.9
 # binary will be $(go env GOPATH)/bin/golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
+RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.27.0
+RUN go get golang.org/x/tools/cmd/goimports
+# Install controller-gen in the dockerfile, otherwise it will be installed during `make generate` which will modify the go.mod
+# and go.sum files, and make the directory dirty.
+RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.9
 RUN pip3 install pre-commit
 
 WORKDIR /src
@@ -46,3 +53,7 @@ COPY go.sum go.sum
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
+
+COPY start-docker.sh /usr/local/bin/start-docker.sh
+
+VOLUME /var/lib/docker

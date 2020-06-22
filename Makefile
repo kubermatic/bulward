@@ -94,8 +94,7 @@ build-image-test: require-docker
 	@cp -a config/dockerfiles/test.Dockerfile bin/image/test/Dockerfile
 	@cp -a .pre-commit-config.yaml bin/image/test
 	@cp -a go.mod go.sum bin/image/test
-	@cp -a Makefile bin/image/test
-	@cp -a hack/verify-boilerplate.sh bin/image/test
+	@cp -a hack/start-docker.sh bin/image/test
 	@docker build -t ${IMAGE_ORG}/bulward-test bin/image/test
 
 push-image-test: build-image-test require-docker

@@ -60,12 +60,11 @@ presubmits:
     clone_uri: ssh://git@github.com/kubermatic/bulward.git
     branches:
       - ^master$
-    run_if_changed: "(go.sum|go.mod|test.Dockerfile|.pre-commit-config.yaml)"
+    run_if_changed: "(go.sum|go.mod|start-docker.sh|test.Dockerfile|.pre-commit-config.yaml)"
     spec:
       containers:
         - image: quay.io/kubermatic/bulward-test
           imagePullPolicy: Always
-          name: e2e-test
           command:
             - make
             - push-image-test
