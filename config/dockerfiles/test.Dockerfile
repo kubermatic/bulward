@@ -30,9 +30,10 @@ ENV GO111MODULE=on
 RUN go env
 
 RUN go get golang.org/x/tools/cmd/goimports
-RUN pip3 install pre-commit
+RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.9
 # binary will be $(go env GOPATH)/bin/golangci-lint
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.27.0
+RUN pip3 install pre-commit
 
 WORKDIR /src
 

@@ -52,7 +52,8 @@ deploy: kind-load-manager
 test:
 	go test -race -v ./...
 
-lint: pre-commit
+lint: generate pre-commit
+	@hack/validate-directory-clean.sh
 	golangci-lint run ./... --deadline=15m
 
 # -------------
