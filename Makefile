@@ -43,7 +43,7 @@ generate:
 	@hack/codegen.sh
 
 deploy: kind-load-manager
-	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}-manager:${VERSION}
+	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	kustomize build config/manager/default | kubectl apply -f -
 
 # ------------
@@ -84,10 +84,10 @@ build-image-%: bin/linux_amd64/$$* require-docker
 	@mkdir -p bin/image/$*
 	@mv bin/linux_amd64/$* bin/image/$*
 	@cp -a config/dockerfiles/$*.Dockerfile bin/image/$*/Dockerfile
-	@docker build -t ${IMAGE_ORG}-$*:${VERSION} bin/image/$*
+	@docker build -t ${IMAGE_ORG}/bulward-$*:${VERSION} bin/image/$*
 
 kind-load-%: build-image-$$*
-	kind load docker-image ${IMAGE_ORG}-$*:${VERSION} --name=${KIND_CLUSTER}
+	kind load docker-image ${IMAGE_ORG}/bulward-$*:${VERSION} --name=${KIND_CLUSTER}
 
 build-image-test: require-docker
 	@mkdir -p bin/image/test
