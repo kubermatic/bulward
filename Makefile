@@ -13,7 +13,7 @@
 # limitations under the License.
 
 COMPONENTS = manager
-IMAGE_ORG = quay.io/kubermatic/bulward
+IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
 
@@ -87,6 +87,19 @@ build-image-%: bin/linux_amd64/$$* require-docker
 
 kind-load-%: build-image-$$*
 	kind load docker-image ${IMAGE_ORG}-$*:${VERSION} --name=${KIND_CLUSTER}
+
+build-image-test: require-docker
+	@mkdir -p bin/image/test
+	@cp -a config/dockerfiles/test.Dockerfile bin/image/test/Dockerfile
+	@cp -a .pre-commit-config.yaml bin/image/test
+	@cp -a go.mod go.sum bin/image/test
+	@cp -a Makefile bin/image/test
+	@cp -a hack/verify-boilerplate.sh bin/image/test
+	@docker build -t ${IMAGE_ORG}/bulward-test bin/image/test
+
+push-image-test: build-image-test require-docker
+	@docker push ${IMAGE_ORG}/bulward-test
+	@echo pushed ${IMAGE_ORG}/bulward-test
 
 # -------
 # Cleanup
