@@ -25,7 +25,7 @@ presubmits:
   clone_uri: ssh://git@github.com/kubermatic/bulward.git
   spec:
     containers:
-    - image: quay.io/kubecarrier/test
+    - image: quay.io/kubermatic/bulward-test
       imagePullPolicy: Always
       command:
       - make
@@ -42,7 +42,7 @@ presubmits:
   clone_uri: ssh://git@github.com/kubermatic/bulward.git
   spec:
     containers:
-    - image: quay.io/kubecarrier/test
+    - image: quay.io/kubermatic/bulward-test
       imagePullPolicy: Always
       command:
       - make
