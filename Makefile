@@ -17,6 +17,14 @@ IMAGE_ORG = quay.io/kubermatic/bulward
 VERSION = v1
 KIND_CLUSTER ?= bulward
 
+ifdef CI
+	# prow sets up GOPATH and we want to make sure it's in the PATH
+	# https://github.com/kubernetes/test-infra/issues/9469
+	# https://github.com/kubernetes/test-infra/blob/895df89b7e4238125063157842c191dac6f7e58f/prow/pod-utils/decorate/podspec.go#L474
+	export PATH:=${PATH}:${GOPATH}/bin
+endif
+
+
 # -----------------
 # Compile & Release
 # -----------------
