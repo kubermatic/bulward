@@ -37,6 +37,9 @@ if [[  ${CONTROLLER_GEN_VERSION} != ${CONTROLLER_GEN_WANT_VERSION} ]]; then
   exit 1
 fi
 
+# DeepCopy functions
+$CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
+
 CRD_VERSION="v1"
 
 # Manager
