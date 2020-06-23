@@ -13,6 +13,8 @@ spec:
     kind: InternalOrganization
     listKind: InternalOrganizationList
     plural: internalorganizations
+    shortNames:
+    - iorg
     singular: internalorganization
   scope: Cluster
   versions:

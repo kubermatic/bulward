@@ -42,7 +42,7 @@ bin/%:
 generate:
 	@hack/codegen.sh
 
-deploy: kind-load-manager
+deploy: generate kind-load-manager
 	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	kustomize build config/manager/default | kubectl apply -f -
 

@@ -27,6 +27,10 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+
+	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/pkg/internal/util"
+	"github.com/kubermatic/bulward/pkg/manager/internal/controllers"
 )
 
 type flags struct {
@@ -42,6 +46,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 }
 
 const (
@@ -64,7 +69,7 @@ func NewManagerCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.enableLeaderElection, "enable-leader-election", true,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	cmd.Flags().StringVar(&flags.bulwardSystemNamespace, "bulward-system-namespace", os.Getenv("BULWARD_NAMESPACE"), "The namespace that Bulward controller manager deploys to.")
-	return cmd
+	return util.CmdLogMixin(cmd)
 }
 
 func run(flags *flags, log logr.Logger) error {
@@ -83,6 +88,14 @@ func run(flags *flags, log logr.Logger) error {
 
 	if flags.bulwardSystemNamespace == "" {
 		return fmt.Errorf("-bulward-system-namespace or ENVVAR BULWARD_NAMESPACE must be set")
+	}
+
+	if err = (&controllers.InternalOrganizationReconciler{
+		Client: mgr.GetClient(),
+		Log:    log.WithName("controllers").WithName("InternalOrganization"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("creating InternalOrganization controller: %w", err)
 	}
 
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {

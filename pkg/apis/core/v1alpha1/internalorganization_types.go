@@ -163,7 +163,7 @@ func (s *InternalOrganizationStatus) SetCondition(condition InternalOrganization
 // +kubebuilder:printcolumn:name="Display Name",type="string",JSONPath=".spec.metadata.displayName"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,shortName=iorg
 type InternalOrganization struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
