@@ -43,8 +43,8 @@ CRD_VERSION="v1"
 # -------
 # CRDs
 # The `|| true` is because the controller-gen will error out if CRD_types.go embeds CustomResourcDefinition, and it will be handled in the following yq removements.
-$CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/core/..." output:crd:artifacts:config=config/internal/manager/crd/bases || true
+$CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/core/..." output:crd:artifacts:config=config/manager/crd/bases || true
 # Webhooks
-$CONTROLLER_GEN webhook paths="./pkg/manager/internal/webhooks/..." output:webhook:artifacts:config=config/internal/manager/webhook
+$CONTROLLER_GEN webhook paths="./pkg/manager/internal/webhooks/..." output:webhook:artifacts:config=config/manager/webhook
 # RBAC
-$CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac:artifacts:config=config/internal/manager/rbac
+$CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac:artifacts:config=config/manager/rbac
