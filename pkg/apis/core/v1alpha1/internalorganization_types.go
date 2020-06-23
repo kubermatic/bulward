@@ -23,17 +23,17 @@ import (
 // InternalOrganizationSpec describes the desired state of InternalOrganization.
 type InternalOrganizationSpec struct {
 	// Metadata	contains additional human readable internalOrganization details.
-	Metadata InternalOrganizationMetadata `json:"metadata,omitempty"`
+	Metadata *InternalOrganizationMetadata `json:"metadata,omitempty"`
 }
 
 // InternalOrganizationMetadata contains the metadata of the InternalOrganization.
 type InternalOrganizationMetadata struct {
 	// DisplayName is the human-readable name of this InternalOrganization.
 	// +kubebuilder:validation:MinLength=1
-	DisplayName string `json:"displayName,omitempty"`
+	DisplayName string `json:"displayName"`
 	// Description is the long and detailed description of the InternalOrganization.
 	// +kubebuilder:validation:MinLength=1
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 }
 
 // InternalOrganizationStatus represents the observed state of InternalOrganization.

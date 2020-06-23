@@ -63,6 +63,9 @@ spec:
                     description: DisplayName is the human-readable name of this InternalOrganization.
                     minLength: 1
                     type: string
+                required:
+                - description
+                - displayName
                 type: object
             type: object
           status:
