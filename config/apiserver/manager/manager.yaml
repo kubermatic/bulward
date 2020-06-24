@@ -11,16 +11,16 @@ metadata:
   name: controller-manager
   namespace: system
   labels:
-    control-plane: controller-manager
+    control-plane: api-server
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: api-server
   replicas: 1
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: api-server
     spec:
       serviceAccountName: sa
       containers:
