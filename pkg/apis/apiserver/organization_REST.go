@@ -18,23 +18,38 @@ package apiserver
 
 
 import (
-"k8s.io/apimachinery/pkg/runtime"
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 "k8s.io/apiserver/pkg/registry/generic"
 "k8s.io/apiserver/pkg/registry/rest"
 
 )
 
-var _ rest.Storage = (*organizationREST)(nil)
-
 type organizationREST struct {
 }
 
+var _ rest.Storage = (*organizationREST)(nil)
 
+var _ rest.Scoper = (*organizationREST)(nil)
+var _ rest.Getter = (*organizationREST)(nil)
 func NewOrganizationREST(getter generic.RESTOptionsGetter) rest.Storage {
 	return &organizationREST{}
 }
 
-func (o organizationREST) New() runtime.Object {
+func (o *organizationREST) New() runtime.Object {
 	return &Organization{}
 }
 
+func (o *organizationREST) NamespaceScoped() bool {
+	return false
+}
+
+func (o *organizationREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	return &Organization{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fake-org",
+		},
+	}, nil
+}
