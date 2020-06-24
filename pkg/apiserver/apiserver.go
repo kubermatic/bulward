@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	genericapiserver "k8s.io/apiserver/pkg/server"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/cmd/server"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -40,36 +40,28 @@ const (
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")
+	_ = log
+	signalCh := genericapiserver.SetupSignalHandler()
 	flags := &flags{}
-	cmd := &cobra.Command{
-		Args:  cobra.NoArgs,
-		Use:   componentAPIServer,
-		Short: "deploy Bulward api server",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(flags, log)
-		},
+	cmd, opts := server.NewCommandStartServer(
+		"",
+		os.Stdout,
+		os.Stderr,
+		apis.GetAllApiBuilders(),
+		signalCh,
+		"apiserver",
+		"v0",
+	)
+	_ = opts
+	cmd.Use = componentAPIServer
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		server.GetOpenApiDefinition = openapi.GetOpenAPIDefinitions
+		if flags.bulwardSystemNamespace == "" {
+			return fmt.Errorf("--bulward-system-namespace or ENVVAR BULWARD_NAMESPACE must be set")
+		}
+		return nil
 	}
 	cmd.Flags().StringVar(&flags.metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	cmd.Flags().StringVar(&flags.bulwardSystemNamespace, "bulward-system-namespace", os.Getenv("BULWARD_NAMESPACE"), "The namespace that Bulward controller manager deploys to.")
 	return cmd
-}
-
-func run(flags *flags, log logr.Logger) error {
-	if flags.bulwardSystemNamespace == "" {
-		return fmt.Errorf("-bulward-system-namespace or ENVVAR BULWARD_NAMESPACE must be set")
-	}
-
-	log.Info("starting apiserver")
-	version := "v0"
-	err := server.StartApiServerWithOptions(&server.StartOptions{
-		EtcdPath: "/registry/bulward.io",
-		Apis: apis.GetAllApiBuilders(),
-		Openapidefs: openapi.GetOpenAPIDefinitions,
-		Title:    "Api",
-		Version:  version,
-	})
-	if err != nil {
-		return fmt.Errorf("starting apiserver: %w", err)
-	}
-	return nil
 }
