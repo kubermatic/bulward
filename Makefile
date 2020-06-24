@@ -51,6 +51,7 @@ deploy: kind-load-manager
 deploy-apiserver: kind-load-apiserver
 	cd config/apiserver/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-apiserver:${VERSION}
 	kustomize build config/apiserver/default | kubectl apply -f -
+	kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 
 # ------------
 # Test Runners
