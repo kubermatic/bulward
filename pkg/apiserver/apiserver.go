@@ -22,6 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/apiserver"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/cmd/server"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -51,6 +53,13 @@ func NewAPIServerCommand() *cobra.Command {
 		signalCh,
 		"apiserver",
 		"v0",
+		func(apiServer *apiserver.Config) error {
+			apiServer.RecommendedConfig.HealthzChecks = filterHealthChecks(apiServer.RecommendedConfig.HealthzChecks, "etcd")
+			apiServer.RecommendedConfig.LivezChecks = filterHealthChecks(apiServer.RecommendedConfig.LivezChecks, "etcd")
+			apiServer.RecommendedConfig.ReadyzChecks = filterHealthChecks(apiServer.RecommendedConfig.ReadyzChecks, "etcd")
+			apiServer.RecommendedConfig.RESTOptionsGetter = nil // we're not using etcd nor anything like this
+			return nil
+		},
 	)
 	_ = opts
 	cmd.Use = componentAPIServer
@@ -65,3 +74,13 @@ func NewAPIServerCommand() *cobra.Command {
 	cmd.Flags().StringVar(&flags.bulwardSystemNamespace, "bulward-system-namespace", os.Getenv("BULWARD_NAMESPACE"), "The namespace that Bulward controller manager deploys to.")
 	return cmd
 }
+func filterHealthChecks(in []healthz.HealthChecker, exclude string) []healthz.HealthChecker {
+	var out []healthz.HealthChecker
+	for _, it := range in {
+		if it.Name() != exclude {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
