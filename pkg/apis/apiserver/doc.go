@@ -1,5 +1,6 @@
+
 /*
-Copyright 2020 The Bulward Authors.
+Copyright YEAR The Bulward Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +15,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
 
-import (
-	"os"
 
-	"github.com/kubermatic/bulward/pkg/apiserver"
-)
+//go:generate deepcopy-gen -O zz_generated.deepcopy -i . -h ../../../boilerplate.go.txt
+//go:generate defaulter-gen -O zz_generated.defaults -i . -h ../../../boilerplate.go.txt
 
-func main() {
-	command := apiserver.NewAPIServerCommand()
+// +k8s:deepcopy-gen=package,register
+// +groupName=apiserver.bulward.io
 
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
-	}
-}
+// Package api is the internal version of the API.
+package apiserver
+

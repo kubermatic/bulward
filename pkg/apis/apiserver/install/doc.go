@@ -1,5 +1,6 @@
+
 /*
-Copyright 2020 The Bulward Authors.
+Copyright YEAR The Bulward Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +15,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
 
-import (
-	"os"
+package install
 
-	"github.com/kubermatic/bulward/pkg/apiserver"
-)
-
-func main() {
-	command := apiserver.NewAPIServerCommand()
-
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
-	}
-}

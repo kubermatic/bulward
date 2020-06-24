@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Bulward Authors.
+Copyright 2020 The Bulward Author.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package apiserver
+
 
 import (
-	"os"
+"k8s.io/apimachinery/pkg/runtime"
+"k8s.io/apiserver/pkg/registry/generic"
+"k8s.io/apiserver/pkg/registry/rest"
 
-	"github.com/kubermatic/bulward/pkg/apiserver"
 )
 
-func main() {
-	command := apiserver.NewAPIServerCommand()
+var _ rest.Storage = (*organizationREST)(nil)
 
-	if err := command.Execute(); err != nil {
-		os.Exit(1)
-	}
+type organizationREST struct {
 }
+
+
+func NewOrganizationREST(getter generic.RESTOptionsGetter) rest.Storage {
+	return &organizationREST{}
+}
+
+func (o organizationREST) New() runtime.Object {
+	return &Organization{}
+}
+

@@ -17,6 +17,8 @@ IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
 
+export CGO_ENABLED:=0
+
 ifdef CI
 	# prow sets up GOPATH and we want to make sure it's in the PATH
 	# https://github.com/kubernetes/test-infra/issues/9469
@@ -82,11 +84,10 @@ require-docker:
 
 # Install cert-manager in the configured Kubernetes cluster
 cert-manager:
-#	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
 	kind load docker-image quay.io/jetstack/cert-manager-controller:v0.14.0 --name=bulward
 	kind load docker-image quay.io/jetstack/cert-manager-cainjector:v0.14.0 --name=bulward
 	kind load docker-image quay.io/jetstack/cert-manager-webhook:v0.14.0 --name=bulward
-	kubectl apply -f ../samples/cert-manager.yaml
 	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=240s
 	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=240s
 	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=240s

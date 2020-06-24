@@ -24,6 +24,9 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/cmd/server"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/kubermatic/bulward/pkg/apis"
+	"github.com/kubermatic/bulward/pkg/openapi"
 )
 
 type flags struct {
@@ -36,7 +39,7 @@ const (
 )
 
 func NewAPIServerCommand() *cobra.Command {
-	log := ctrl.Log.WithName("manager")
+	log := ctrl.Log.WithName("apiserver")
 	flags := &flags{}
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
@@ -59,7 +62,9 @@ func run(flags *flags, log logr.Logger) error {
 	log.Info("starting apiserver")
 	version := "v0"
 	err := server.StartApiServerWithOptions(&server.StartOptions{
-		EtcdPath: "/registry/example.com",
+		EtcdPath: "/registry/bulward.io",
+		Apis: apis.GetAllApiBuilders(),
+		Openapidefs: openapi.GetOpenAPIDefinitions,
 		Title:    "Api",
 		Version:  version,
 	})
