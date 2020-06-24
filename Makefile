@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export CGO_ENABLED:=0
+
 COMPONENTS = manager
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
@@ -35,6 +37,7 @@ bin/windows_amd64/%: GOARGS = GOOS=windows GOARCH=amd64
 bin/%:
 	$(eval COMPONENT=$(shell basename $*))
 	$(GOARGS) go build  -o bin/$* cmd/$(COMPONENT)/main.go
+	@echo $(CGO_ENABLED)
 
 # ---------------
 # Code Generators
