@@ -19,11 +19,11 @@ package apiserver
 import (
 	"os"
 
-	"github.com/kubermatic/bulward/pkg/manager"
+	"github.com/kubermatic/bulward/pkg/apiserver"
 )
 
 func main() {
-	command := manager.NewManagerCommand()
+	command := apiserver.NewAPIServerCommand()
 
 	if err := command.Execute(); err != nil {
 		os.Exit(1)
