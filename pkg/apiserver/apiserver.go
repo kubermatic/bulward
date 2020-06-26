@@ -62,6 +62,7 @@ func init() {
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+// +kubebuilder:rbac:groups=bulward.io,resources=internalorganizations,verbs=create;get;list;watch;update;patch;delete
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")

@@ -32,6 +32,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
@@ -41,8 +42,6 @@ import (
 const (
 	internalOrganizationResouce = "internalorganizations"
 )
-
-// +kubebuilder:rbac:groups=bulward.io,resources=internalorganizations,verbs=create;get;list;watch;update;patch;delete
 
 type OrganizationREST struct {
 	client    client.Client
@@ -354,10 +353,8 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organizationName strin
 	}
 	user := a.GetUser()
 	if user == nil {
-		// TODO: fix this...totally wrong but still!!!
-		// TODO: not sure is this due to local testing or some other drawback!
+		klog.Warning("user info missing; you're probably running API extension server with --delegated-auth=false")
 		return true, nil
-		//return false, fmt.Errorf("unknown user")
 	}
 
 	extra := make(map[string]authorizationv1.ExtraValue)
