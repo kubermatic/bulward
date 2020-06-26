@@ -38,7 +38,9 @@ if [[  ${CONTROLLER_GEN_VERSION} != ${CONTROLLER_GEN_WANT_VERSION} ]]; then
 fi
 
 # DeepCopy functions
-#$CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
+# there's currently the issue with autogeneration for the organization_REST.go
+# since the OrganizationREST stucts contains various non-deepcopiable interfaces
+# $CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
 
 CRD_VERSION="v1"
 
@@ -55,6 +57,7 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac
 # Bulward API extension server
 # RBAC
 $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rbac:artifacts:config=config/apiserver/rbac
-go generate ./pkg/apis/apiserver/...
+# there's currently the same issue with autogeneration for the organization_REST.go
+# go generate ./pkg/apis/apiserver/...
 find ./pkg -type f -name '*.go' -exec sed -i'' 's/YEAR/2020/g' {} \;
 goimports -local github.com/kubermatic -w .
