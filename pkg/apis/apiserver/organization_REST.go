@@ -316,11 +316,29 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 				}
 				internalOrganization := &corev1alpha1.InternalOrganization{}
 				if err := o.scheme.Convert(ev.Object, internalOrganization, nil); err != nil {
-					panic(err)
+					res <- watch.Event{
+						Type: watch.Error,
+						Object: &metav1.Status{
+							Status:  "error",
+							Message: err.Error(),
+							Reason:  metav1.StatusReasonInternalError,
+							Code:    http.StatusInternalServerError,
+						},
+					}
+					return
 				}
 				sol := &Organization{}
 				if err := o.scheme.Convert(internalOrganization, sol, nil); err != nil {
-					panic(err)
+					res <- watch.Event{
+						Type: watch.Error,
+						Object: &metav1.Status{
+							Status:  "error",
+							Message: err.Error(),
+							Reason:  metav1.StatusReasonInternalError,
+							Code:    http.StatusInternalServerError,
+						},
+					}
+					return
 				}
 				ev.Object = sol
 
