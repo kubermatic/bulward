@@ -57,7 +57,7 @@ deploy-apiserver: kind-load-apiserver
 # Test Runners
 # ------------
 test:
-	go test -race -v ./...
+	CGO_ENABLED=1 go test -race -v ./...
 
 lint: generate pre-commit
 	@hack/validate-directory-clean.sh
