@@ -48,7 +48,7 @@ The extension apiserver will expose `Organization` objects with the original nam
 
 ### Extensible Default Roles for Organizations and Projects
 
-Tools like Kubermatic and KubeCarrier will bring their own default roles and permissions, or are even managing dynamic Roles depending on available CRDs (KubeCarrier).
+Tools like Kubermatic and KubeCarrier will bring their own default roles and permissions, or are even managing dynamicRI Roles depending on available CRDs (KubeCarrier).
 Bulward should make it easy to integrate these Roles without needing deep integrations.
 
 > See #Predefined Roles section

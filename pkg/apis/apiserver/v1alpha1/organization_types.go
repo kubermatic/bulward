@@ -30,6 +30,9 @@ type Organization struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	//Spec   corev1alpha1.InternalOrganizationSpec   `json:"spec,omitempty"`
+	//Status corev1alpha1.InternalOrganizationStatus `json:"status,omitempty"`
+
 	Spec   OrganizationSpec   `json:"spec,omitempty"`
 	Status OrganizationStatus `json:"status,omitempty"`
 }

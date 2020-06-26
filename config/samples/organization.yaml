@@ -1,0 +1,8 @@
+apiVersion: apiserver.bulward.io/v1alpha1
+kind: Organization
+metadata:
+  name: test
+spec:
+  metadata:
+    displayName: The A Organization
+    description: I am the first orgainzation of Bulward.
