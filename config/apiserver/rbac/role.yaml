@@ -7,6 +7,14 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - mutatingwebhookconfigurations
@@ -16,16 +24,8 @@ rules:
   - list
   - watch
 - apiGroups:
-    - ""
+  - authorization.k8s.io
   resources:
-    - "namespaces"
+  - subjectaccessreviews
   verbs:
-    - get
-    - list
-    - watch
-- apiGroups:
-    - authorization.k8s.io
-  resources:
-    - subjectaccessreviews
-  verbs:
-    - create
+  - create

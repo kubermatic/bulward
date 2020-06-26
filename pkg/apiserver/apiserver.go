@@ -21,13 +21,21 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/client-go/dynamic"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/apiserver"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/cmd/server"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/kubermatic/bulward/pkg/apis"
+	apiserverapi "github.com/kubermatic/bulward/pkg/apis/apiserver"
 	"github.com/kubermatic/bulward/pkg/openapi"
 )
 
@@ -39,6 +47,15 @@ type flags struct {
 const (
 	componentAPIServer = "apiserver"
 )
+
+func init() {
+	// due to apiserver-builder-alpha usage we must use the following scheme
+	utilruntime.Must(clientgoscheme.AddToScheme(builders.Scheme))
+}
+
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")
@@ -64,9 +81,48 @@ func NewAPIServerCommand() *cobra.Command {
 	_ = opts
 	cmd.Use = componentAPIServer
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		// from server.StartApiServerWithOptions()
+		// which isn't called during server.NewCommandStartServer
 		server.GetOpenApiDefinition = openapi.GetOpenAPIDefinitions
+
 		if flags.bulwardSystemNamespace == "" {
 			return fmt.Errorf("--bulward-system-namespace or ENVVAR BULWARD_NAMESPACE must be set")
+		}
+		loader := clientcmd.NewDefaultClientConfigLoadingRules()
+		loader.ExplicitPath = cmd.Flag("kubeconfig").Value.String()
+		cfg, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			loader,
+			&clientcmd.ConfigOverrides{},
+		).ClientConfig()
+		if err != nil {
+			return err
+		}
+		mapper, err := apiutil.NewDynamicRESTMapper(cfg)
+		if err != nil {
+			return err
+		}
+		k8sClient, err := client.New(cfg, client.Options{
+			Scheme: builders.Scheme,
+			Mapper: mapper,
+		})
+		if err != nil {
+			return err
+		}
+		dynamicClient, err := dynamic.NewForConfig(cfg)
+		if err != nil {
+			return err
+		}
+		if err := apiserverapi.OrganizationRESTSingleton.InjectMapper(mapper); err != nil {
+			return err
+		}
+		if err := apiserverapi.OrganizationRESTSingleton.InjectClient(k8sClient); err != nil {
+			return err
+		}
+		if err := apiserverapi.OrganizationRESTSingleton.InjectDynamicClient(dynamicClient); err != nil {
+			return err
+		}
+		if err := apiserverapi.OrganizationRESTSingleton.InjectScheme(builders.Scheme); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -83,4 +139,3 @@ func filterHealthChecks(in []healthz.HealthChecker, exclude string) []healthz.He
 	}
 	return out
 }
-

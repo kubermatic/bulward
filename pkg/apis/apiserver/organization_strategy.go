@@ -1,6 +1,5 @@
-
 /*
-Copyright YEAR The Bulward Authors.
+Copyright 2020 The Bulward Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,15 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package apiserver
 
 import (
 	"context"
 
-	"k8s.io/klog"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/klog"
 )
 
 // Validate checks that an instance of Organization is well formed

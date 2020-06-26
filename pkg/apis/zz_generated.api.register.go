@@ -19,11 +19,12 @@ limitations under the License.
 package apis
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
+
 	"github.com/kubermatic/bulward/pkg/apis/apiserver"
 	_ "github.com/kubermatic/bulward/pkg/apis/apiserver/install" // Install the apiserver group
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 )
 
 var (

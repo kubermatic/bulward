@@ -38,7 +38,7 @@ if [[  ${CONTROLLER_GEN_VERSION} != ${CONTROLLER_GEN_WANT_VERSION} ]]; then
 fi
 
 # DeepCopy functions
-$CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
+#$CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
 
 CRD_VERSION="v1"
 
@@ -50,3 +50,11 @@ $CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/core/..." outpu
 $CONTROLLER_GEN webhook paths="./pkg/manager/internal/webhooks/..." output:webhook:artifacts:config=config/manager/webhook
 # RBAC
 $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac:artifacts:config=config/manager/rbac
+
+
+# Bulward API extension server
+# RBAC
+$CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rbac:artifacts:config=config/apiserver/rbac
+go generate ./pkg/apis/apiserver/...
+find ./pkg -type f -name '*.go' -exec sed -i'' 's/YEAR/2020/g' {} \;
+goimports -local github.com/kubermatic -w .

@@ -1,6 +1,5 @@
-
 /*
-Copyright YEAR The Bulward Authors.
+Copyright 2020 The Bulward Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
-
 //go:generate deepcopy-gen -O zz_generated.deepcopy -i . -h ../../../boilerplate.go.txt
 //go:generate defaulter-gen -O zz_generated.defaults -i . -h ../../../boilerplate.go.txt
 
@@ -25,4 +22,3 @@ limitations under the License.
 
 // Package api is the internal version of the API.
 package apiserver
-

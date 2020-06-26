@@ -1,6 +1,5 @@
-
 /*
-Copyright YEAR The Bulward Authors.
+Copyright 2020 The Bulward Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 
 // Api versions allow the api contract for a resource to be changed while keeping
 // backward compatibility by support multiple concurrent versions
@@ -30,4 +28,3 @@ limitations under the License.
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=apiserver.bulward.io
 package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
-

@@ -19,11 +19,12 @@ limitations under the License.
 package install
 
 import (
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
-	"github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
+
+	"github.com/kubermatic/bulward/pkg/apis/apiserver"
+	"github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 )
 
 func init() {
