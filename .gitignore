@@ -3,3 +3,6 @@
 vendor
 bin
 dist/
+kubeconfig
+violations.report
+apiserver.local.config

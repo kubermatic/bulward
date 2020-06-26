@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+  labels:
+    control-plane: api-server
+spec:
+  selector:
+    matchLabels:
+      control-plane: api-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: api-server
+    spec:
+      serviceAccountName: sa
+      containers:
+      - name: manager
+        image: manager
+        args:
+          - --secure-port=9443
+          - --tls-cert-file=$(CERT_DIR)/tls.crt
+          - --tls-private-key-file=$(CERT_DIR)/tls.key
+        env:
+          - name: BULWARD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CERT_DIR
+            value: "/serving-certs"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 15
+        ports:
+          - containerPort: 9443
+            name: https
+            protocol: TCP
+        volumeMounts:
+          - mountPath: "/serving-certs"
+            name: cert
+            readOnly: true
+        resources:
+          limits:
+            cpu: "1"
+            memory: 100Mi
+          requests:
+            cpu: "1"
+            memory: 100Mi
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert
+      terminationGracePeriodSeconds: 10

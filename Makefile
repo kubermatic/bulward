@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export CGO_ENABLED:=0
-
-COMPONENTS = manager
+COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
+
+export CGO_ENABLED:=0
 
 ifdef CI
 	# prow sets up GOPATH and we want to make sure it's in the PATH
@@ -45,9 +45,26 @@ bin/%:
 generate:
 	@hack/codegen.sh
 
-deploy: generate kind-load-manager
-	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
-	kustomize build config/manager/default | kubectl apply -f -
+setup-cluster:
+	@mkdir -p /tmp/bulward-hack
+	@cp ./hack/audit.yaml /tmp/bulward-hack
+	@kind create cluster --retain --config=./hack/kind-config.yaml --name=bulward --image=${KIND_NODE_IMAGE} || true
+	@kind get kubeconfig --name=bulward > "${HOME}/.kube/kind-config-bulward"
+	@echo "Deploy cert-manger in management cluster"
+	# Deploy cert-manager right after the creation of the management cluster, since the deployments of cert-manger take some time to get ready.
+	@$(MAKE) KUBECONFIG=${HOME}/.kube/kind-config-bulward cert-manager
+
+setup: setup-cluster generate kind-load-manager kind-load-apiserver
+
+deploy-manager: setup
+	@cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
+	@kustomize build config/manager/default | kubectl apply -f -
+
+deploy-apiserver: setup
+	kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
+	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
+
+deploy-all: deploy-apiserver deploy-manager
 
 # ------------
 # Test Runners
@@ -79,6 +96,19 @@ require-docker:
 	@[[ -z "${QUAY_IO_USERNAME}" ]] || ( echo "logging in to ${QUAY_IO_USERNAME}" && docker login -u ${QUAY_IO_USERNAME} -p ${QUAY_IO_PASSWORD} quay.io )
 .PHONY: require-docker
 
+# Install cert-manager in the configured Kubernetes cluster
+cert-manager:
+	docker pull quay.io/jetstack/cert-manager-controller:v0.14.0
+	docker pull quay.io/jetstack/cert-manager-cainjector:v0.14.0
+	docker pull quay.io/jetstack/cert-manager-webhook:v0.14.0
+	kind load docker-image quay.io/jetstack/cert-manager-controller:v0.14.0 --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-cainjector:v0.14.0 --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-webhook:v0.14.0 --name=bulward
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
+	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=240s
+	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=240s
+	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=240s
+
 # ----------------
 # Container Images
 # ----------------
@@ -89,7 +119,7 @@ build-image-%: bin/linux_amd64/$$* require-docker
 	@cp -a config/dockerfiles/$*.Dockerfile bin/image/$*/Dockerfile
 	@docker build -t ${IMAGE_ORG}/bulward-$*:${VERSION} bin/image/$*
 
-kind-load-%: build-image-$$*
+kind-load-%: build-image-$$* setup-cluster
 	kind load docker-image ${IMAGE_ORG}/bulward-$*:${VERSION} --name=${KIND_CLUSTER}
 
 build-image-test: require-docker
@@ -109,4 +139,5 @@ push-image-test: build-image-test require-docker
 # -------
 clean:
 	@rm -rf bin/$*
+	@kind delete cluster --name=bulward
 .PHONY: clean
