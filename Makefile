@@ -16,6 +16,7 @@ COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
+CERTMANAGER_VERSION = v0.14.0
 
 export CGO_ENABLED:=0
 
@@ -44,7 +45,13 @@ bin/%:
 generate:
 	@hack/codegen.sh
 
-deploy: kind-load-manager
+deploy:
+	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
+	kubectl create namespace bulward-system
+	$(MAKE) deploy-manager
+	$(MAKE) deploy-apiserver
+
+deploy-manager: kind-load-manager
 	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	kustomize build config/manager/default | kubectl apply -f -
 
@@ -59,7 +66,7 @@ deploy-apiserver: kind-load-apiserver
 test:
 	CGO_ENABLED=1 go test -race -v ./...
 
-lint: generate pre-commit
+lint: pre-commit
 	@hack/validate-directory-clean.sh
 	golangci-lint run ./... --deadline=15m
 
@@ -85,16 +92,16 @@ require-docker:
 
 # Install cert-manager in the configured Kubernetes cluster
 cert-manager:
-	docker pull quay.io/jetstack/cert-manager-controller:v0.14.0
-	docker pull quay.io/jetstack/cert-manager-cainjector:v0.14.0
-	docker pull quay.io/jetstack/cert-manager-webhook:v0.14.0
-	kind load docker-image quay.io/jetstack/cert-manager-controller:v0.14.0 --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-cainjector:v0.14.0 --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-webhook:v0.14.0 --name=bulward
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
-	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=240s
-	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=240s
-	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=240s
+	docker pull quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION}
+	docker pull quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION}
+	docker pull quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION}
+	kind load docker-image quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION} --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION} --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION} --name=bulward
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/${CERTMANAGER_VERSION}/cert-manager.yaml
+	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=120s
+	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=120s
+	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=120s
 
 # ----------------
 # Container Images

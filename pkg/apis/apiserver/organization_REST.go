@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
+// +k8s:deepcopy-gen=false
 type OrganizationREST struct {
 	client  client.Client
 	dynamic dynamic.Interface

@@ -62,7 +62,7 @@ func NewAPIServerCommand() *cobra.Command {
 	_ = log
 	signalCh := genericapiserver.SetupSignalHandler()
 	flags := &flags{}
-	cmd, opts := server.NewCommandStartServer(
+	cmd, _ := server.NewCommandStartServer(
 		"",
 		os.Stdout,
 		os.Stderr,
@@ -78,7 +78,6 @@ func NewAPIServerCommand() *cobra.Command {
 			return nil
 		},
 	)
-	_ = opts
 	cmd.Use = componentAPIServer
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		// from server.StartApiServerWithOptions()
