@@ -49,8 +49,12 @@ quick-generate:
 	@hack/codegen.sh
 
 generate:
-	#apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --go-header-file ./hack/boilerplate/boilerplate.go.txt
+	@mkdir -p ./bin
+	@# I can't count how broken are the code generators
+	@mv ./pkg/apis/core ./bin
+	@apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --go-header-file ./hack/boilerplate/boilerplate.go.txt
 	@apiserver-boot build generated  --generator conversion  --generator openapi --generator defaulter
+	@mv ./bin/core ./pkg/apis
 	@rm -Rf ./plugin
 	@$(MAKE) quick-generate
 
@@ -64,7 +68,7 @@ setup-cluster:
 	# Deploy cert-manager right after the creation of the management cluster, since the deployments of cert-manger take some time to get ready.
 	@$(MAKE) KUBECONFIG=${HOME}/.kube/kind-config-bulward cert-manager
 
-setup: setup-cluster quick-generate kind-load-manager kind-load-apiserver
+setup: setup-cluster kind-load-manager kind-load-apiserver
 
 deploy-manager: setup cert-manager
 	@cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
