@@ -1,3 +1,5 @@
+### TODO: Find a way to use Kustomize to manage this config but not to override the namespace of this RoleBinding.
+### Kustomize will override all namespace of all resources, so we decided to apply this RoleBinding manually, since this RoleBinding should be created in `kube-system` namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -9,6 +11,5 @@ roleRef:
   name: extension-apiserver-authentication-reader
 subjects:
 - kind: ServiceAccount
-  ### TODO: fix this!!!
   name: bulward-apiserver-sa
   namespace: bulward-system

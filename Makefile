@@ -18,6 +18,9 @@ COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
+CERTMANAGER_VERSION = v0.14.0
+
+export CGO_ENABLED:=0
 
 ifdef CI
 	# prow sets up GOPATH and we want to make sure it's in the PATH
@@ -42,8 +45,15 @@ bin/%:
 # ---------------
 # Code Generators
 # ---------------
-generate:
+quick-generate:
 	@hack/codegen.sh
+
+generate:
+	#apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --go-header-file ./hack/boilerplate/boilerplate.go.txt
+	@apiserver-boot build generated  --generator conversion  --generator openapi --generator defaulter
+	@rm -Rf ./plugin
+	@$(MAKE) quick-generate
+
 
 setup-cluster:
 	@mkdir -p /tmp/bulward-hack
@@ -54,7 +64,7 @@ setup-cluster:
 	# Deploy cert-manager right after the creation of the management cluster, since the deployments of cert-manger take some time to get ready.
 	@$(MAKE) KUBECONFIG=${HOME}/.kube/kind-config-bulward cert-manager
 
-setup: setup-cluster generate kind-load-manager kind-load-apiserver
+setup: setup-cluster quick-generate kind-load-manager kind-load-apiserver
 
 deploy-manager: setup cert-manager
 	@cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
@@ -64,7 +74,12 @@ deploy-apiserver: setup cert-manager
 	kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
 	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 
-deploy: deploy-manager deploy-apiserver
+deploy: setup-cluster
+	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
+	@kubectl create namespace bulward-system || true  # ignore if exists
+	$(MAKE) deploy-manager
+	$(MAKE) deploy-apiserver
+
 
 # ------------
 # Test Runners
@@ -72,9 +87,9 @@ deploy: deploy-manager deploy-apiserver
 test:
 	CGO_ENABLED=1 go test -race -v ./...
 
-lint: generate pre-commit
+lint: pre-commit
 	@hack/validate-directory-clean.sh
-	golangci-lint run ./... --deadline=15m
+	golangci-lint run ./... --skip-files ".*generated.*" --deadline=15m
 
 # -------------
 # Util Commands
@@ -98,16 +113,16 @@ require-docker:
 
 # Install cert-manager in the configured Kubernetes cluster
 cert-manager:
-	docker pull quay.io/jetstack/cert-manager-controller:v0.14.0
-	docker pull quay.io/jetstack/cert-manager-cainjector:v0.14.0
-	docker pull quay.io/jetstack/cert-manager-webhook:v0.14.0
-	kind load docker-image quay.io/jetstack/cert-manager-controller:v0.14.0 --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-cainjector:v0.14.0 --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-webhook:v0.14.0 --name=bulward
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
-	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=240s
-	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=240s
-	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=240s
+	docker pull quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION}
+	docker pull quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION}
+	docker pull quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION}
+	kind load docker-image quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION} --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION} --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION} --name=bulward
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/${CERTMANAGER_VERSION}/cert-manager.yaml
+	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=120s
+	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=120s
+	kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-manager --timeout=120s
 
 # ----------------
 # Container Images

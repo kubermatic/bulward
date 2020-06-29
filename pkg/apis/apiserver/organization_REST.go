@@ -43,6 +43,7 @@ const (
 	internalOrganizationResouce = "internalorganizations"
 )
 
+// +k8s:deepcopy-gen=false
 type OrganizationREST struct {
 	client    client.Client
 	dynamicRI dynamic.NamespaceableResourceInterface

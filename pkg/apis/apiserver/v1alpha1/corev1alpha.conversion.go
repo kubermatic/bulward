@@ -19,14 +19,19 @@ package v1alpha1
 import (
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
 
-func Corev1alphaRegisterConversion(scheme *runtime.Scheme) error {
-	if err := scheme.AddGeneratedConversionFunc((*apiserver.Organization)(nil), (*corev1alpha1.InternalOrganization)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		in := a.(*apiserver.Organization)
+func init() {
+	utilruntime.Must(Corev1alpha1RegisterConversion(builders.Scheme))
+}
+
+func Corev1alpha1RegisterConversion(scheme *runtime.Scheme) error {
+	if err := scheme.AddGeneratedConversionFunc((*Organization)(nil), (*corev1alpha1.InternalOrganization)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		in := a.(*Organization)
 		out := b.(*corev1alpha1.InternalOrganization)
 		out.ObjectMeta = in.ObjectMeta
 		out.TypeMeta = in.TypeMeta
@@ -37,9 +42,9 @@ func Corev1alphaRegisterConversion(scheme *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := scheme.AddGeneratedConversionFunc((*corev1alpha1.InternalOrganization)(nil), (*apiserver.Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
+	if err := scheme.AddGeneratedConversionFunc((*corev1alpha1.InternalOrganization)(nil), (*Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		in := a.(*corev1alpha1.InternalOrganization)
-		out := b.(*apiserver.Organization)
+		out := b.(*Organization)
 		out.ObjectMeta = in.ObjectMeta
 		out.TypeMeta = in.TypeMeta
 		for i := range out.ManagedFields {
@@ -49,8 +54,8 @@ func Corev1alphaRegisterConversion(scheme *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := scheme.AddGeneratedConversionFunc((*apiserver.OrganizationList)(nil), (*corev1alpha1.InternalOrganizationList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		in := a.(*apiserver.OrganizationList)
+	if err := scheme.AddGeneratedConversionFunc((*OrganizationList)(nil), (*corev1alpha1.InternalOrganizationList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		in := a.(*OrganizationList)
 		out := b.(*corev1alpha1.InternalOrganizationList)
 		out.Items = nil
 		for _, it := range in.Items {
@@ -64,12 +69,12 @@ func Corev1alphaRegisterConversion(scheme *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := scheme.AddGeneratedConversionFunc((*corev1alpha1.InternalOrganizationList)(nil), (*apiserver.OrganizationList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+	if err := scheme.AddGeneratedConversionFunc((*corev1alpha1.InternalOrganizationList)(nil), (*OrganizationList)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		in := a.(*corev1alpha1.InternalOrganizationList)
-		out := b.(*apiserver.OrganizationList)
+		out := b.(*OrganizationList)
 		out.Items = nil
 		for _, it := range in.Items {
-			outIt := &apiserver.Organization{}
+			outIt := &Organization{}
 			if err := scope.Convert(&it, outIt, scope.Flags()); err != nil {
 				return err
 			}

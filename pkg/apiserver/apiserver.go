@@ -56,7 +56,7 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(builders.Scheme))
 	utilruntime.Must(apiserverapi.AddToScheme(builders.Scheme))
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(builders.Scheme))
-	utilruntime.Must(apiserverv1alpha1.Corev1alphaRegisterConversion(builders.Scheme))
+	utilruntime.Must(apiserverv1alpha1.Corev1alpha1RegisterConversion(builders.Scheme))
 }
 
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch
@@ -69,7 +69,7 @@ func NewAPIServerCommand() *cobra.Command {
 	_ = log
 	signalCh := genericapiserver.SetupSignalHandler()
 	flags := &flags{}
-	cmd, opts := server.NewCommandStartServer(
+	cmd, _ := server.NewCommandStartServer(
 		"",
 		os.Stdout,
 		os.Stderr,
@@ -85,7 +85,6 @@ func NewAPIServerCommand() *cobra.Command {
 			return nil
 		},
 	)
-	_ = opts
 	cmd.Use = componentAPIServer
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		// from server.StartApiServerWithOptions()
