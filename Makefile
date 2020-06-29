@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export CGO_ENABLED:=0
+
 COMPONENTS = manager
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
@@ -35,6 +37,7 @@ bin/windows_amd64/%: GOARGS = GOOS=windows GOARCH=amd64
 bin/%:
 	$(eval COMPONENT=$(shell basename $*))
 	$(GOARGS) go build  -o bin/$* cmd/$(COMPONENT)/main.go
+	@echo $(CGO_ENABLED)
 
 # ---------------
 # Code Generators
@@ -42,7 +45,7 @@ bin/%:
 generate:
 	@hack/codegen.sh
 
-deploy: kind-load-manager
+deploy: generate kind-load-manager
 	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	kustomize build config/manager/default | kubectl apply -f -
 
@@ -50,7 +53,7 @@ deploy: kind-load-manager
 # Test Runners
 # ------------
 test:
-	go test -race -v ./...
+	CGO_ENABLED=1 go test -race -v ./...
 
 lint: generate pre-commit
 	@hack/validate-directory-clean.sh
