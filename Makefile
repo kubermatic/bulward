@@ -68,7 +68,7 @@ test:
 
 lint: pre-commit
 	@hack/validate-directory-clean.sh
-	golangci-lint run ./... --deadline=15m
+	golangci-lint run ./... --skip-files ".*generated.*" --deadline=15m
 
 # -------------
 # Util Commands
