@@ -43,19 +43,19 @@ bin/%:
 # Code Generators
 # ---------------
 generate:
-	@hack/codegen.sh
+	@GOROOT=$(go env GOROOT) hack/codegen.sh
 
 deploy:
 	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
-	kubectl create namespace bulward-system
+	@kubectl create namespace bulward-system || true  # ignore if exists
 	$(MAKE) deploy-manager
 	$(MAKE) deploy-apiserver
 
-deploy-manager: kind-load-manager
+deploy-manager: kind-load-manager cert-manager
 	cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	kustomize build config/manager/default | kubectl apply -f -
 
-deploy-apiserver: kind-load-apiserver
+deploy-apiserver: kind-load-apiserver cert-manager
 	cd config/apiserver/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-apiserver:${VERSION}
 	kustomize build config/apiserver/default | kubectl apply -f -
 	kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
