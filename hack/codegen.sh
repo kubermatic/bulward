@@ -59,5 +59,4 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac
 $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rbac:artifacts:config=config/apiserver/rbac
 # Generators for API extension server.
 $APISERVER_BOOT build generated  --generator apiregister --generator conversion  --generator openapi --generator defaulter
-#find ./pkg -type f -name '*.go' -exec sed -i'' 's/YEAR/2020/g' {} \;
 goimports -local github.com/kubermatic -w .
