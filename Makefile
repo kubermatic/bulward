@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export CGO_ENABLED:=0
+
 COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
 VERSION = v1
 KIND_CLUSTER ?= bulward
-
-export CGO_ENABLED:=0
 
 ifdef CI
 	# prow sets up GOPATH and we want to make sure it's in the PATH
@@ -56,15 +56,15 @@ setup-cluster:
 
 setup: setup-cluster generate kind-load-manager kind-load-apiserver
 
-deploy-manager: setup
+deploy-manager: setup cert-manager
 	@cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
 	@kustomize build config/manager/default | kubectl apply -f -
 
-deploy-apiserver: setup
+deploy-apiserver: setup cert-manager
 	kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
 	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 
-deploy-all: deploy-apiserver deploy-manager
+deploy: deploy-manager deploy-apiserver
 
 # ------------
 # Test Runners
