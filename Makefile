@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+CERTMANAGER_VERSION = v0.14.0
 COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
-VERSION = v1
 KIND_CLUSTER ?= bulward
-CERTMANAGER_VERSION = v0.14.0
+SHELL=/bin/bash
+.SHELLFLAGS=-euo pipefail -c
+VERSION = v1
 
 export CGO_ENABLED:=0
 
