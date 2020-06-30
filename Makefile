@@ -65,11 +65,11 @@ setup-cluster: require-docker
 
 setup: setup-cluster kind-load-manager kind-load-apiserver
 
-deploy-manager: setup cert-manager
+deploy-manager: setup
 	@kubectl apply -k config/manager/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
-deploy-apiserver: setup cert-manager
+deploy-apiserver: setup
 	@kubectl apply -k config/apiserver/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
 	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 	kubectl wait --for=condition=available deployment/bulward-apiserver-controller-manager -n bulward-system --timeout=120s
