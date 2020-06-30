@@ -60,24 +60,21 @@ setup-cluster: require-docker
 	@echo "Deploy cert-manger in management cluster"
 	# Deploy cert-manager right after the creation of the management cluster, since the deployments of cert-manger take some time to get ready.
 	@$(MAKE) KUBECONFIG=${HOME}/.kube/kind-config-bulward cert-manager
+	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
+	@kubectl create namespace bulward-system || true  # ignore if exists
 
 setup: setup-cluster kind-load-manager kind-load-apiserver
 
 deploy-manager: setup cert-manager
-	@cd config/manager/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-manager:${VERSION}
-	@kustomize build config/manager/default | kubectl apply -f -
+	@kubectl apply -k config/manager/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
 deploy-apiserver: setup cert-manager
-	@kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
+	@kubectl apply -k config/apiserver/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
 	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 	kubectl wait --for=condition=available deployment/bulward-apiserver-controller-manager -n bulward-system --timeout=120s
 
-deploy: setup-cluster
-	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
-	@kubectl create namespace bulward-system || true  # ignore if exists
-	$(MAKE) deploy-manager
-	$(MAKE) deploy-apiserver
+deploy: setup deploy-apiserver deploy-manager
 
 e2e-test: setup deploy
 	@./hack/e2e-test.sh
