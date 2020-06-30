@@ -90,12 +90,12 @@ func run(flags *flags, log logr.Logger) error {
 		return fmt.Errorf("-bulward-system-namespace or ENVVAR BULWARD_NAMESPACE must be set")
 	}
 
-	if err = (&controllers.InternalOrganizationReconciler{
+	if err = (&controllers.OrganizationReconciler{
 		Client: mgr.GetClient(),
-		Log:    log.WithName("controllers").WithName("InternalOrganization"),
+		Log:    log.WithName("controllers").WithName("Organization"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		return fmt.Errorf("creating InternalOrganization controller: %w", err)
+		return fmt.Errorf("creating Organization controller: %w", err)
 	}
 
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {

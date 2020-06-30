@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - bulward.io
   resources:
-  - internalorganizations
+  - organizations
   verbs:
   - get
   - list
@@ -30,7 +30,7 @@ rules:
 - apiGroups:
   - bulward.io
   resources:
-  - internalorganizations/status
+  - organizations/status
   verbs:
   - get
   - patch
