@@ -38,7 +38,7 @@ func chainConversion(scheme *runtime.Scheme, initObj runtime.Object, objs ...run
 
 func ConvertToV1Alpha1Unstructured(organization *Organization, scheme *runtime.Scheme) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
-	if _, err := chainConversion(scheme, organization, &corev1alpha1.InternalOrganization{}, u); err != nil {
+	if _, err := chainConversion(scheme, organization, &corev1alpha1.Organization{}, u); err != nil {
 		return nil, err
 	}
 	return u, nil
@@ -54,7 +54,7 @@ func ConvertFromV1Alpha1Unstructured(internalOrgv1alpha1 *unstructured.Unstructu
 		return nil, fmt.Errorf("wrong GVK, expected %v, found %v", expectedGVK, gvk)
 	}
 	org := &Organization{}
-	if _, err := chainConversion(scheme, internalOrgv1alpha1, &corev1alpha1.InternalOrganization{}, org); err != nil {
+	if _, err := chainConversion(scheme, internalOrgv1alpha1, &corev1alpha1.Organization{}, org); err != nil {
 		return nil, err
 	}
 	return org, nil
