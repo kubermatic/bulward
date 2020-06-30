@@ -16,7 +16,6 @@
 
 set -euo pipefail
 
-
 if [ -z $(go env GOBIN) ]; then
 GOBIN=$(go env GOPATH)/bin
 else
@@ -62,4 +61,5 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rb
 
 export GOROOT=$(go env GOROOT)
 $APISERVER_BOOT build generated  --generator apiregister --generator conversion  --generator openapi --generator defaulter
+rm -Rf ./plugin
 goimports -local github.com/kubermatic -w .
