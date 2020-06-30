@@ -19,4 +19,5 @@ limitations under the License.
 // of the same resource
 
 // +groupName=bulward.io
+// +k8s:defaulter-gen=false
 package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
