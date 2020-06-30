@@ -14,12 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-//go:generate deepcopy-gen -O zz_generated.deepcopy -i . -h ../../../boilerplate.go.txt
-//go:generate defaulter-gen -O zz_generated.defaults -i . -h ../../../boilerplate.go.txt
+// Api versions allow the api contract for a resource to be changed while keeping
+// backward compatibility by support multiple concurrent versions
+// of the same resource
 
-// +k8s:deepcopy-gen=package,register
-// +groupName=apiserver.bulward.io
-// +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/core/v1alpha1
-
-// Package api is the internal version of the API.
-package apiserver
+// +groupName=bulward.io
+package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
