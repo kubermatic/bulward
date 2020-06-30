@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 // +groupName=bulward.io
-// +k8s:defaulter-gen=false
 
 // Package core is the internal version of the API.
 package core
