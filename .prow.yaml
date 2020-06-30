@@ -59,7 +59,7 @@ presubmits:
   - name: pull-bulward-e2e-v1.16
     always_run: true
     decorate: true
-    clone_uri: ssh://git@github.com/kubermatic/kubecarrier.git
+    clone_uri: ssh://git@github.com/kubermatic/bulward.git
     spec:
       # DNS configuration allows inner cluster to access the internet.
       dnsPolicy: "None"
@@ -106,7 +106,7 @@ presubmits:
   - name: pull-bulward-e2e-v1.17
     always_run: true
     decorate: true
-    clone_uri: ssh://git@github.com/kubermatic/kubecarrier.git
+    clone_uri: ssh://git@github.com/kubermatic/bulward.git
     spec:
       # DNS configuration allows inner cluster to access the internet.
       dnsPolicy: "None"
