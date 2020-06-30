@@ -22,11 +22,13 @@ import (
 	"net/http"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/apiserver/pkg/registry/generic"
@@ -40,7 +42,15 @@ import (
 )
 
 const (
-	internalOrganizationResouce = "organizations"
+	internalOrganizationResource = "organizations"
+	externalOrganizationResource = "organizations"
+)
+
+var (
+	qualifiedResource = schema.GroupResource{
+		Group:    SchemeGroupVersion.Group,
+		Resource: externalOrganizationResource,
+	}
 )
 
 // +k8s:deepcopy-gen=false
@@ -80,7 +90,7 @@ func (o *OrganizationREST) InjectDynamicClient(dynamic dynamic.Interface) error 
 	if o.dynamicRI != nil {
 		return fmt.Errorf("dynamicRI already injected")
 	}
-	o.dynamicRI = dynamic.Resource(corev1alpha1.GroupVersion.WithResource(internalOrganizationResouce))
+	o.dynamicRI = dynamic.Resource(corev1alpha1.GroupVersion.WithResource(internalOrganizationResource))
 	return nil
 }
 
@@ -120,7 +130,7 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 		return nil, err
 	}
 	if !visible {
-		return nil, fmt.Errorf("NotFound")
+		return nil, apierrors.NewNotFound(qualifiedResource, name)
 	}
 
 	org, err := o.dynamicRI.Get(ctx, name, *options)
@@ -192,7 +202,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 		return nil, false, err
 	}
 	if !visible {
-		return nil, false, fmt.Errorf("NotFound")
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
 	}
 
 	a, err := filters.GetAuthorizerAttributes(ctx)
@@ -251,10 +261,17 @@ func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValida
 		return nil, false, err
 	}
 	if !visible {
-		return nil, false, fmt.Errorf("NotFound")
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
+	}
+	obj, err := o.Get(ctx, name, &metav1.GetOptions{})
+	if err != nil {
+		return nil, false, err
+	}
+	if err := deleteValidation(ctx, obj); err != nil {
+		return obj, false, err
 	}
 	err = o.dynamicRI.Delete(ctx, name, *options)
-	return nil, false, err
+	return obj, false, err
 }
 
 func (o *OrganizationREST) DeleteCollection(ctx context.Context, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions, listOptions *internalversion.ListOptions) (runtime.Object, error) {
@@ -342,7 +359,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organizationName strin
 			Verb:        verb,
 			Group:       corev1alpha1.GroupVersion.Group,
 			Version:     corev1alpha1.GroupVersion.Version,
-			Resource:    internalOrganizationResouce,
+			Resource:    internalOrganizationResource,
 			Subresource: a.GetSubresource(),
 			Name:        organizationName,
 		},

@@ -126,8 +126,7 @@ modfor:
 	assert.NoError(t, cl.Update(ctx, org))
 
 	org = &apiserverv1alpha1.Organization{}
-	org.Name = "test"
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: org.Name}, org))
+	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
 	assert.Equal(t, "bb", org.Labels["aa"])
 
 	t.Log("delete")
@@ -137,7 +136,7 @@ modfor:
 		if ev.Type == watch.Deleted {
 			obj := &apiserverv1alpha1.Organization{}
 			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if obj.Name == "test" {
+			if assert.Equal(t, "test", obj.Name) {
 				t.Log("watch -- deleted")
 				break
 			}
