@@ -32,7 +32,7 @@ rules:
 - apiGroups:
   - bulward.io
   resources:
-  - internalorganizations
+  - organizations
   verbs:
   - create
   - delete
