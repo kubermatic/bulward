@@ -15,6 +15,7 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
+      serviceAccountName: sa
       containers:
       - name: manager
         image: manager
