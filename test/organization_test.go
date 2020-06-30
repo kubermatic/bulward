@@ -44,8 +44,16 @@ func init() {
 }
 
 func TestIntegration(t *testing.T) {
-	org := &apiserverv1alpha1.Organization{}
-	org.Name = "test"
+	description := "I'm a little test organization from Berlin."
+	org := &apiserverv1alpha1.Organization{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+		Spec: corev1alpha1.OrganizationSpec{Metadata: &corev1alpha1.OrganizationMetadata{
+			DisplayName: "test",
+			Description: description,
+		}},
+	}
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
 	cl, err := client.New(cfg, client.Options{
@@ -61,7 +69,9 @@ func TestIntegration(t *testing.T) {
 	t.Cleanup(cancel)
 
 	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
-	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{})
+	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+		FieldSelector: "metadata.name=test",
+	})
 	require.NoError(t, err)
 	t.Cleanup(wi.Stop)
 
@@ -71,7 +81,8 @@ func TestIntegration(t *testing.T) {
 		if ev.Type == watch.Added {
 			obj := &apiserverv1alpha1.Organization{}
 			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if obj.Name == "test" {
+			if assert.Equal(t, "test", obj.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
+				assert.Equal(t, description, obj.Spec.Metadata.Description)
 				t.Log("watch -- created")
 				break
 			}
@@ -80,12 +91,14 @@ func TestIntegration(t *testing.T) {
 
 	t.Log("get")
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: org.Name}, org))
+	assert.Equal(t, description, org.Spec.Metadata.Description, "description")
 
 	t.Log("list")
 	orgs := &apiserverv1alpha1.OrganizationList{}
 	if assert.NoError(t, cl.List(ctx, orgs)) {
 		if assert.Len(t, orgs.Items, 1) {
 			assert.Equal(t, "test", orgs.Items[0].Name)
+			assert.Equal(t, description, orgs.Items[0].Spec.Metadata.Description, "description")
 		}
 	}
 
@@ -94,12 +107,18 @@ modfor:
 		select {
 		case ev := <-wi.ResultChan():
 			require.NoError(t, scheme.Scheme.Convert(ev.Object, org, nil))
-			if org.Name == "test" {
+			if assert.Equal(t, "test", org.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
 				t.Log("watch -- modified")
 			}
 		case <-time.After(time.Second):
 			break modfor
 		}
+	}
+
+	assert.Equal(t, description, org.Spec.Metadata.Description, "description")
+	assert.NotEqual(t, 0, org.Status.ObservedGeneration, "observed generation should be propagated")
+	if assert.NotEmpty(t, org.Status.Namespace, "namespace is empty") {
+		t.Log("org namespace: " + org.Status.Namespace.Name)
 	}
 
 	t.Log("update")
