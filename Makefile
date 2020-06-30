@@ -103,7 +103,7 @@ pre-commit:
 	pre-commit run -a
 
 require-docker:
-	@docker ps > /dev/null 2>&1 || start-docker.sh || (echo "cannot find running docker daemon nor can start new one" && false)
+	@docker ps > /dev/null 2>&1 || start-docker.sh || ./hack/start-docker.sh || (echo "cannot find running docker daemon nor can start new one" && false)
 	@[[ -z "${QUAY_IO_USERNAME}" ]] || ( echo "logging in to ${QUAY_IO_USERNAME}" && docker login -u ${QUAY_IO_USERNAME} -p ${QUAY_IO_PASSWORD} quay.io )
 .PHONY: require-docker
 
