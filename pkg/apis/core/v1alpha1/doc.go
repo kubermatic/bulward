@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// +domain=bulward.io
+// Api versions allow the api contract for a resource to be changed while keeping
+// backward compatibility by support multiple concurrent versions
+// of the same resource
 
-package apis
+// +k8s:openapi-gen=true
+// +groupName=bulward.io
+package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"

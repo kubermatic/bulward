@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// +domain=bulward.io
+// +groupName=bulward.io
 
-package apis
+// Package core is the internal version of the API.
+package core

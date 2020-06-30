@@ -42,8 +42,13 @@ bin/%:
 # ---------------
 # Code Generators
 # ---------------
+
+# This should only be executed once the new crd is added in the apiserver api group.
+generate-apiregister:
+	apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --input-dirs github.com/kubermatic/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
+
 generate:
-	@GOROOT=$(go env GOROOT) hack/codegen.sh
+	@hack/codegen.sh
 
 deploy:
 	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
