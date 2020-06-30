@@ -44,12 +44,13 @@ bin/%:
 # ---------------
 # Code Generators
 # ---------------
-quick-generate:
-	@hack/codegen.sh
+
+# This should only be executed once the new crd is added in the apiserver api group.
+generate-apiregister:
+	apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --input-dirs github.com/kubermatic/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
 
 generate:
 	@hack/codegen.sh
-
 
 setup-cluster: require-docker
 	@mkdir -p /tmp/bulward-hack

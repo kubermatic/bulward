@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	internalOrganizationResouce = "internalorganizations"
+	internalOrganizationResouce = "organizations"
 )
 
 // +k8s:deepcopy-gen=false

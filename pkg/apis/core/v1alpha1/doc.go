@@ -18,5 +18,6 @@ limitations under the License.
 // backward compatibility by support multiple concurrent versions
 // of the same resource
 
+// +k8s:openapi-gen=true
 // +groupName=bulward.io
 package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"

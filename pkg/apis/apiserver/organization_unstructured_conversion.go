@@ -49,7 +49,7 @@ func ConvertFromV1Alpha1Unstructured(internalOrgv1alpha1 *unstructured.Unstructu
 	if err != nil {
 		return nil, err
 	}
-	expectedGVK := corev1alpha1.GroupVersion.WithKind("InternalOrganization")
+	expectedGVK := corev1alpha1.GroupVersion.WithKind("Organization")
 	if gvk != expectedGVK {
 		return nil, fmt.Errorf("wrong GVK, expected %v, found %v", expectedGVK, gvk)
 	}

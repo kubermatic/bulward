@@ -60,10 +60,9 @@ func TestIntegration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	wi, err := dcl.Resource(apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")).Watch(ctx, metav1.ListOptions{})
-	if err != nil {
-		return
-	}
+	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
+	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{})
+	require.NoError(t, err)
 	t.Cleanup(wi.Stop)
 
 	t.Log("create")
