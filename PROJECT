@@ -1,0 +1,4 @@
+
+version: "1"
+domain: bulward.io
+repo: github.com/kubermatic/bulward

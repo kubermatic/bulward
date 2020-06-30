@@ -1,0 +1,7 @@
+resources:
+- extension_apiserver_auth_role_binding.yaml
+- leader_election_role_binding.yaml
+- leader_election_role.yaml
+- role_binding.yaml
+- role.yaml
+- service_account.yaml

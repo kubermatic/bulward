@@ -1,0 +1,16 @@
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.apiserver.bulward.io
+  annotations:
+    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
+spec:
+  caBundle: Cg==
+  group: apiserver.bulward.io
+  groupPriorityMinimum: 10000
+  service:
+    name: service
+    namespace: system
+    port: 443
+  version: v1alpha1
+  versionPriority: 1000

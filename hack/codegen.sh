@@ -22,7 +22,7 @@ else
 GOBIN=$(go env GOBIN)
 fi
 
-if [ -z $(which controller-gen) ]; then
+if [ -z "$(which controller-gen)" ]; then
 	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.9
   CONTROLLER_GEN=$GOBIN/controller-gen
 else
@@ -32,13 +32,15 @@ fi
 CONTROLLER_GEN_VERSION=$(${CONTROLLER_GEN} --version)
 CONTROLLER_GEN_WANT_VERSION="Version: v0.2.9"
 
-if [[  ${CONTROLLER_GEN_VERSION} != ${CONTROLLER_GEN_WANT_VERSION} ]]; then
+if [[  ${CONTROLLER_GEN_VERSION} != "${CONTROLLER_GEN_WANT_VERSION}" ]]; then
   echo "Wrong controller-gen version. Wants ${CONTROLLER_GEN_WANT_VERSION} found ${CONTROLLER_GEN_VERSION}"
   exit 1
 fi
 
+APISERVER_BOOT=$(which apiserver-boot)
+
 # DeepCopy functions
-$CONTROLLER_GEN object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y) paths=./pkg/apis/...
+$CONTROLLER_GEN "object:headerFile=./hack/boilerplate/boilerplate.go.txt,year=$(date +%Y)" paths=./pkg/apis/...
 
 CRD_VERSION="v1"
 
@@ -50,3 +52,12 @@ $CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/core/..." outpu
 $CONTROLLER_GEN webhook paths="./pkg/manager/internal/webhooks/..." output:webhook:artifacts:config=config/manager/webhook
 # RBAC
 $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac:artifacts:config=config/manager/rbac
+
+
+# Bulward API extension server
+# RBAC
+$CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rbac:artifacts:config=config/apiserver/rbac
+# Generators for API extension server.
+$APISERVER_BOOT build generated  --generator apiregister --generator conversion  --generator openapi --generator defaulter
+rm -Rf ./plugin
+goimports -local github.com/kubermatic -w .
