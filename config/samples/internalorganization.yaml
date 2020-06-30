@@ -1,8 +1,0 @@
-apiVersion: bulward.io/v1alpha1
-kind: InternalOrganization
-metadata:
-  name: organization-a
-spec:
-  metadata:
-    displayName: The A Organization
-    description: I am the first orgainzation of Bulward.

@@ -1,7 +1,7 @@
-apiVersion: apiserver.bulward.io/v1alpha1
+apiVersion: bulward.io/v1alpha1
 kind: Organization
 metadata:
-  name: test
+  name: organization-a
 spec:
   metadata:
     displayName: The A Organization

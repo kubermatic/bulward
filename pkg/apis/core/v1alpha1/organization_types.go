@@ -22,7 +22,7 @@ import (
 
 // OrganizationSpec describes the desired state of Organization.
 type OrganizationSpec struct {
-	// Metadata	contains additional human readable internalOrganization details.
+	// Metadata	contains additional human readable Organization details.
 	Metadata *OrganizationMetadata `json:"metadata,omitempty"`
 }
 
