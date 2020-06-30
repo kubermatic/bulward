@@ -1,5 +1,5 @@
 apiVersion: bulward.io/v1alpha1
-kind: InternalOrganization
+kind: Organization
 metadata:
   name: organization-a
 spec:
