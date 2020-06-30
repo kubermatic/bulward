@@ -49,14 +49,7 @@ quick-generate:
 	@hack/codegen.sh
 
 generate:
-	@mkdir -p ./bin
-	@# I can't count how broken are the code generators
-	@mv ./pkg/apis/core ./bin
-	@apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --go-header-file ./hack/boilerplate/boilerplate.go.txt
-	@apiserver-boot build generated  --generator conversion  --generator openapi --generator defaulter
-	@mv ./bin/core ./pkg/apis
-	@rm -Rf ./plugin
-	@$(MAKE) quick-generate
+	@hack/codegen.sh
 
 
 setup-cluster:

@@ -59,7 +59,10 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/manager/..." output:rbac
 # RBAC
 $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rbac:artifacts:config=config/apiserver/rbac
 # Generators for API extension server.
-
 export GOROOT=$(go env GOROOT)
-$APISERVER_BOOT build generated  --generator apiregister --generator conversion  --generator openapi --generator defaulter
+mkdir -p ./bin
+mv ./pkg/apis/core ./bin
+$APISERVER_BOOT build generated  --generator apiregister --generator conversion  --generator openapi --generator defaulter || true
+mv ./bin/core ./pkg/apis
+rm -rf ./plugin
 goimports -local github.com/kubermatic -w .
