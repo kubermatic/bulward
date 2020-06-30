@@ -74,6 +74,8 @@ deploy: setup-cluster
 	$(MAKE) deploy-manager
 	$(MAKE) deploy-apiserver
 
+e2e-test: setup
+	@./hack/e2e-test.sh
 
 # ------------
 # Test Runners

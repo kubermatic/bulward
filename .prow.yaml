@@ -56,6 +56,100 @@ presubmits:
                   cpu: 4
                   memory: 6Gi
 
+  - name: pull-bulward-e2e-v1.16
+    always_run: true
+    decorate: true
+    clone_uri: ssh://git@github.com/kubermatic/kubecarrier.git
+    spec:
+      # DNS configuration allows inner cluster to access the internet.
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1 # Cloudflare DNS servers
+          - 1.0.0.1
+      containers:
+        - image: quay.io/kubecarrier/test
+          imagePullPolicy: Always
+          name: e2e-test
+          command:
+            - go-init
+            - -main
+            - make e2e-test
+          env:
+            - name: KIND_NODE_IMAGE
+              value: "kindest/node:v1.16.9@sha256:7175872357bc85847ec4b1aba46ed1d12fa054c83ac7a8a11f5c268957fd5765"
+            - name: GO111MODULE
+              value: "on"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: key_id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: key_secret
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: region
+          # docker-in-docker needs privileged mode
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 3
+              memory: 4Gi
+
+  - name: pull-bulward-e2e-v1.17
+    always_run: true
+    decorate: true
+    clone_uri: ssh://git@github.com/kubermatic/kubecarrier.git
+    spec:
+      # DNS configuration allows inner cluster to access the internet.
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1 # Cloudflare DNS servers
+          - 1.0.0.1
+      containers:
+        - image: quay.io/kubecarrier/test
+          imagePullPolicy: Always
+          name: e2e-test
+          command:
+            - go-init
+            - -main
+            - make e2e-test
+          env:
+            - name: KIND_NODE_IMAGE
+              value: "kindest/node:v1.17.5@sha256:ab3f9e6ec5ad8840eeb1f76c89bb7948c77bbf76bcebe1a8b59790b8ae9a283a"
+            - name: GO111MODULE
+              value: "on"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: key_id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: key_secret
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: kubecarrier-aws
+                  key: region
+          # docker-in-docker needs privileged mode
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 3
+              memory: 4Gi
+
 postsubmits:
   - name: post-bulward-test-image
     decorate: true
