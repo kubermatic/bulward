@@ -49,7 +49,7 @@ generate:
 	@hack/codegen.sh
 
 
-setup-cluster:
+setup-cluster: require-docker
 	@mkdir -p /tmp/bulward-hack
 	@cp ./hack/audit.yaml /tmp/bulward-hack
 	@kind create cluster --retain --config=./hack/kind-config.yaml --name=bulward --image=${KIND_NODE_IMAGE} || true
