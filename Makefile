@@ -70,8 +70,9 @@ deploy-manager: setup
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
 deploy-apiserver: setup
-	@kubectl apply -k config/apiserver/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-apiserver:v1|${IMAGE_ORG}/bulward-apiserver:${VERSION}|g"| kubectl apply -f -
-	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
+	cd config/apiserver/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-apiserver:${VERSION}
+	kustomize build config/apiserver/default | kubectl apply -f -
+	kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 	kubectl wait --for=condition=available deployment/bulward-apiserver-controller-manager -n bulward-system --timeout=120s
 
 deploy: setup deploy-apiserver deploy-manager
