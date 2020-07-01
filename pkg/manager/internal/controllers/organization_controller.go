@@ -19,12 +19,16 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
@@ -43,15 +47,17 @@ type OrganizationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update;
+// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;create;update
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile function reconciles the Organization object which specified by the request. Currently, it does the following:
 // 1. Fetch the Organization object.
 // 2. Handle the deletion of the Organization object (Remove the namespace that the Organization owns, and remove the finalizer).
 // 3. Handle the creation/update of the Organization object (Create/reconcile the namespace and insert the finalizer).
-// 4. Update the status of the Organization object.
+// 4. Create project-admin and rbac-admin OrganizationRoleTemplate for owners of the Organization.
+// 5. Update the status of the Organization object.
 func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("Organization", req.NamespacedName)
@@ -73,8 +79,23 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{}, fmt.Errorf("updating finalizers: %w", err)
 		}
 	}
+
+	var members []rbacv1.Subject
+	for _, owner := range organization.Spec.Owners {
+		members = append(members, owner)
+	}
+	organization.Status.Members = members
+
+	if err := r.Status().Update(ctx, organization); err != nil {
+		return ctrl.Result{}, fmt.Errorf("updating finalizers: %w", err)
+	}
+
 	if err := r.reconcileNamespace(ctx, log, organization); err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
+	}
+
+	if _, err := r.reconcileOrganizationRoleTemplates(ctx, organization); err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconciling OrganizationRoleTemplates: %w", err)
 	}
 
 	if !organization.IsReady() {
@@ -99,6 +120,7 @@ func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.Organization{}).
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
+		Owns(&corev1alpha1.OrganizationRoleTemplate{}).
 		Complete(r)
 }
 
@@ -151,4 +173,94 @@ func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log log
 		}
 	}
 	return nil
+}
+
+func (r *OrganizationReconciler) reconcileOrganizationRoleTemplates(ctx context.Context, organization *corev1alpha1.Organization) ([]*corev1alpha1.OrganizationRoleTemplate, error) {
+	desiredProjectAdminOrganizationRoleTemplate := r.buildProjectAdminOrganizationRoleTemplate(organization)
+	desiredRBACAdminOrganizationRoleTemplate := r.buildRBACAdminOrganizationRoleTemplate(organization)
+
+	var templates []*corev1alpha1.OrganizationRoleTemplate
+	projectTemplate, err := r.reconcileOrganizationRoleTemplate(ctx, organization, desiredProjectAdminOrganizationRoleTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("reconcile project-admin OrganizationRoleTemplate: %w", err)
+	}
+	templates = append(templates, projectTemplate)
+
+	rbacTemplate, err := r.reconcileOrganizationRoleTemplate(ctx, organization, desiredRBACAdminOrganizationRoleTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("reconcile rbac-admin OrganizationRoleTemplate: %w", err)
+	}
+	templates = append(templates, rbacTemplate)
+
+	return templates, nil
+}
+
+func (r *OrganizationReconciler) reconcileOrganizationRoleTemplate(ctx context.Context,
+	organization *corev1alpha1.Organization,
+	desiredOrganizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate,
+) (*corev1alpha1.OrganizationRoleTemplate, error) {
+
+	desired := desiredOrganizationRoleTemplate.DeepCopy()
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, desiredOrganizationRoleTemplate, func() error {
+		if err := controllerutil.SetControllerReference(
+			organization, desiredOrganizationRoleTemplate, r.Scheme); err != nil {
+			return fmt.Errorf("set controller reference: %w", err)
+		}
+		if !reflect.DeepEqual(desired.Spec, desiredOrganizationRoleTemplate.Spec) {
+			desiredOrganizationRoleTemplate.Spec = desired.Spec
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("creating or updating OrganizationRoleTemplate: %w", err)
+	}
+
+	return desiredOrganizationRoleTemplate, nil
+}
+
+func (r *OrganizationReconciler) buildProjectAdminOrganizationRoleTemplate(organization *corev1alpha1.Organization) *corev1alpha1.OrganizationRoleTemplate {
+	return &corev1alpha1.OrganizationRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "project-admin",
+			Namespace: organization.Status.Namespace.Name,
+		},
+		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
+			Scopes: []corev1alpha1.RoleTemplateScope{
+				corev1alpha1.RoleTemplateScopeOrganization,
+			},
+			BindTo: []corev1alpha1.BindToType{
+				corev1alpha1.BindToOwners,
+			},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"apiserver.bulward.io"},
+					Resources: []string{"projects"},
+					Verbs:     []string{rbacv1.VerbAll},
+				},
+			},
+		},
+	}
+}
+
+func (r *OrganizationReconciler) buildRBACAdminOrganizationRoleTemplate(organization *corev1alpha1.Organization) *corev1alpha1.OrganizationRoleTemplate {
+	return &corev1alpha1.OrganizationRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rbac-admin",
+			Namespace: organization.Status.Namespace.Name,
+		},
+		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
+			Scopes: []corev1alpha1.RoleTemplateScope{
+				corev1alpha1.RoleTemplateScopeOrganization,
+			},
+			BindTo: []corev1alpha1.BindToType{
+				corev1alpha1.BindToOwners,
+			},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"rbac.authorization.k8s.io"},
+					Resources: []string{"roles", "rolebindings"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},
+				},
+			},
+		},
+	}
 }

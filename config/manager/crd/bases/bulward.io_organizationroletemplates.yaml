@@ -6,22 +6,17 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
-  name: organizations.bulward.io
+  name: organizationroletemplates.bulward.io
 spec:
   group: bulward.io
   names:
-    kind: Organization
-    listKind: OrganizationList
-    plural: organizations
-    shortNames:
-    - iorg
-    singular: organization
-  scope: Cluster
+    kind: OrganizationRoleTemplate
+    listKind: OrganizationRoleTemplateList
+    plural: organizationroletemplates
+    singular: organizationroletemplate
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.namespace.name
-      name: Organization Namespace
-      type: string
     - jsonPath: .spec.metadata.displayName
       name: Display Name
       type: string
@@ -34,7 +29,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Organization is internal representation for Organization in Bulward.
+        description: OrganizationRoleTemplate is internal representation for OrganizationRoleTemplate
+          in Bulward.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -49,71 +45,107 @@ spec:
           metadata:
             type: object
           spec:
-            description: OrganizationSpec describes the desired state of Organization.
+            description: OrganizationRoleTemplateSpec describes the desired state
+              of OrganizationRoleTemplate.
             properties:
+              bindTo:
+                description: BindTo defines the member types of the Organization that
+                  this OrganizationRoleTemplate will be bound to.
+                items:
+                  enum:
+                  - Owners
+                  - Everyone
+                  type: string
+                type: array
               metadata:
-                description: "Metadata\tcontains additional human readable Organization
+                description: "Metadata\tcontains additional human readable OrganizationRoleTemplate
                   details."
                 properties:
                   description:
                     description: Description is the long and detailed description
-                      of the Organization.
+                      of the OrganizationRoleTemplate.
                     minLength: 1
                     type: string
                   displayName:
-                    description: DisplayName is the human-readable name of this Organization.
+                    description: DisplayName is the human-readable name of this OrganizationRoleTemplate.
                     minLength: 1
                     type: string
                 required:
                 - description
                 - displayName
                 type: object
-              owners:
-                description: Owners holds the RBAC subjects that represent the owners
-                  of this organization.
+              rules:
                 items:
-                  description: Subject contains a reference to the object or user
-                    identities a role binding applies to.  This can either hold a
-                    direct API object reference, or a value for non-objects such as
-                    user and group names.
+                  description: PolicyRule holds information that describes a policy
+                    rule, but does not contain information about who the rule applies
+                    to or which namespace the rule applies to.
                   properties:
-                    apiGroup:
-                      description: APIGroup holds the API group of the referenced
-                        subject. Defaults to "" for ServiceAccount subjects. Defaults
-                        to "rbac.authorization.k8s.io" for User and Group subjects.
-                      type: string
-                    kind:
-                      description: Kind of object being referenced. Values defined
-                        by this API group are "User", "Group", and "ServiceAccount".
-                        If the Authorizer does not recognized the kind value, the
-                        Authorizer should report an error.
-                      type: string
-                    name:
-                      description: Name of the object being referenced.
-                      type: string
-                    namespace:
-                      description: Namespace of the referenced object.  If the object
-                        kind is non-namespace, such as "User" or "Group", and this
-                        value is not empty the Authorizer should report an error.
-                      type: string
+                    apiGroups:
+                      description: APIGroups is the name of the APIGroup that contains
+                        the resources.  If multiple API groups are specified, any
+                        action requested against one of the enumerated resources in
+                        any API group will be allowed.
+                      items:
+                        type: string
+                      type: array
+                    nonResourceURLs:
+                      description: NonResourceURLs is a set of partial urls that a
+                        user should have access to.  *s are allowed, but only as the
+                        full, final step in the path Since non-resource URLs are not
+                        namespaced, this field is only applicable for ClusterRoles
+                        referenced from a ClusterRoleBinding. Rules can either apply
+                        to API resources (such as "pods" or "secrets") or non-resource
+                        URL paths (such as "/api"),  but not both.
+                      items:
+                        type: string
+                      type: array
+                    resourceNames:
+                      description: ResourceNames is an optional white list of names
+                        that the rule applies to.  An empty set means that everything
+                        is allowed.
+                      items:
+                        type: string
+                      type: array
+                    resources:
+                      description: Resources is a list of resources this rule applies
+                        to.  ResourceAll represents all resources.
+                      items:
+                        type: string
+                      type: array
+                    verbs:
+                      description: Verbs is a list of Verbs that apply to ALL the
+                        ResourceKinds and AttributeRestrictions contained in this
+                        rule.  VerbAll represents all kinds.
+                      items:
+                        type: string
+                      type: array
                   required:
-                  - kind
-                  - name
+                  - verbs
                   type: object
+                type: array
+              scopes:
+                description: Scopes defines the scopes of this OrganizationRoleTemplate.
+                items:
+                  enum:
+                  - Organization
+                  - Project
+                  type: string
                 minItems: 1
                 type: array
             required:
-            - owners
+            - rules
+            - scopes
             type: object
           status:
-            description: OrganizationStatus represents the observed state of Organization.
+            description: OrganizationRoleTemplateStatus represents the observed state
+              of OrganizationRoleTemplate.
             properties:
               conditions:
                 description: Conditions represents the latest available observations
-                  of a Organization's current state.
+                  of a OrganizationRoleTemplate's current state.
                 items:
-                  description: OrganizationCondition contains details for the current
-                    condition of this Organization.
+                  description: OrganizationRoleTemplateCondition contains details
+                    for the current condition of this OrganizationRoleTemplate.
                   properties:
                     lastTransitionTime:
                       description: LastTransitionTime is the last time the condition
@@ -133,8 +165,8 @@ spec:
                         'False', 'Unknown').
                       type: string
                     type:
-                      description: Type is the type of the Organization condition,
-                        currently ('Ready').
+                      description: Type is the type of the OrganizationRoleTemplate
+                        condition, currently ('Ready').
                       type: string
                   required:
                   - lastTransitionTime
@@ -146,7 +178,7 @@ spec:
                 type: array
               members:
                 description: Members holds the RBAC subjects that represent the members
-                  (including owners) of this Organization.
+                  (including owners) of this OrganizationRoleTemplate.
                 items:
                   description: Subject contains a reference to the object or user
                     identities a role binding applies to.  This can either hold a
@@ -177,19 +209,9 @@ spec:
                   - name
                   type: object
                 type: array
-              namespace:
-                description: NamespaceName is the name of the Namespace that the Organization
-                  manages.
-                properties:
-                  name:
-                    minLength: 1
-                    type: string
-                required:
-                - name
-                type: object
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
-                  for this Organization by the controller.
+                  for this OrganizationRoleTemplate by the controller.
                 format: int64
                 type: integer
               phase:

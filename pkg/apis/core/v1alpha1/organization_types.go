@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,6 +25,9 @@ import (
 type OrganizationSpec struct {
 	// Metadata	contains additional human readable Organization details.
 	Metadata *OrganizationMetadata `json:"metadata,omitempty"`
+	// Owners holds the RBAC subjects that represent the owners of this organization.
+	// +kubebuilder:validation:MinItems=1
+	Owners []rbacv1.Subject `json:"owners"`
 }
 
 // OrganizationMetadata contains the metadata of the Organization.
@@ -50,6 +54,8 @@ type OrganizationStatus struct {
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
 	Phase OrganizationPhaseType `json:"phase,omitempty"`
+	// Members holds the RBAC subjects that represent the members (including owners) of this Organization.
+	Members []rbacv1.Subject `json:"members,omitempty"`
 }
 
 // OrganizationPhaseType represents all conditions as a single string for printing by using kubectl commands.
