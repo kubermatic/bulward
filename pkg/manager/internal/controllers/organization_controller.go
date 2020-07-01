@@ -81,9 +81,7 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	}
 
 	var members []rbacv1.Subject
-	for _, owner := range organization.Spec.Owners {
-		members = append(members, owner)
-	}
+	members = append(members, organization.Spec.Owners...)
 	organization.Status.Members = members
 
 	if err := r.Status().Update(ctx, organization); err != nil {
