@@ -66,13 +66,15 @@ setup-cluster: require-docker
 setup: setup-cluster kind-load-manager kind-load-apiserver
 
 deploy-manager: setup
+	@echo "deploying manager"
 	@kubectl apply -k config/manager/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
 deploy-apiserver: setup
-	cd config/apiserver/manager && kustomize edit set image manager=${IMAGE_ORG}/bulward-apiserver:${VERSION}
-	kustomize build config/apiserver/default | kubectl apply -f -
-	kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
+	@echo "deploying API extension server"
+	@#kubectl 1.18.3 has older kustomize version which improperly renders APIService name
+	@kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
+	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 	kubectl wait --for=condition=available deployment/bulward-apiserver-controller-manager -n bulward-system --timeout=120s
 
 deploy: setup deploy-apiserver deploy-manager

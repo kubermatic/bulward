@@ -68,7 +68,7 @@ presubmits:
           - 1.1.1.1 # Cloudflare DNS servers
           - 1.0.0.1
       containers:
-        - image: quay.io/kubecarrier/test
+        - image: quay.io/kubermatic/bulward-test
           imagePullPolicy: Always
           name: e2e-test
           command:
@@ -115,7 +115,7 @@ presubmits:
           - 1.1.1.1 # Cloudflare DNS servers
           - 1.0.0.1
       containers:
-        - image: quay.io/kubecarrier/test
+        - image: quay.io/kubermatic/bulward-test
           imagePullPolicy: Always
           name: e2e-test
           command:
