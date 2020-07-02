@@ -98,6 +98,14 @@ func run(flags *flags, log logr.Logger) error {
 		return fmt.Errorf("creating Organization controller: %w", err)
 	}
 
+	if err = (&controllers.OrganizationRoleTemplateReconciler{
+		Client: mgr.GetClient(),
+		Log:    log.WithName("controllers").WithName("OrganizationRoleTemplate"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("creating OrganizationRoleTemplate controller: %w", err)
+	}
+
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
 		return fmt.Errorf("adding readyz checker: %w", err)
 	}

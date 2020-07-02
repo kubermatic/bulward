@@ -31,6 +31,14 @@ rules:
 - apiGroups:
   - bulward.io
   resources:
+  - organizationroletemplates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - bulward.io
+  resources:
   - organizations
   verbs:
   - get

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -92,12 +93,28 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
 	}
 
-	if _, err := r.reconcileOrganizationRoleTemplates(ctx, organization); err != nil {
+	templates, err := r.reconcileOrganizationRoleTemplates(ctx, organization)
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling OrganizationRoleTemplates: %w", err)
 	}
 
-	if !organization.IsReady() {
+	var unreadyTemplateNames []string
+	for _, template := range templates {
+		if !template.IsReady() {
+			unreadyTemplateNames = append(unreadyTemplateNames, template.Name)
+		}
+	}
+
+	if len(unreadyTemplateNames) > 0 {
 		// Update Organization Status
+		organization.Status.ObservedGeneration = organization.Generation
+		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
+			Type:    corev1alpha1.OrganizationReady,
+			Status:  corev1alpha1.ConditionFalse,
+			Reason:  "OrganizationRoleTemplatesUnready",
+			Message: fmt.Sprintf("Some OrganizationRoleTemplates objects for owners are unready [%s]", strings.Join(unreadyTemplateNames, ",")),
+		})
+	} else {
 		organization.Status.ObservedGeneration = organization.Generation
 		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
 			Type:    corev1alpha1.OrganizationReady,
@@ -105,9 +122,9 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			Reason:  "SetupComplete",
 			Message: "Organization setup is complete.",
 		})
-		if err := r.Status().Update(ctx, organization); err != nil {
-			return ctrl.Result{}, fmt.Errorf("updating Organization status: %w", err)
-		}
+	}
+	if err := r.Status().Update(ctx, organization); err != nil {
+		return ctrl.Result{}, fmt.Errorf("updating Organization status: %w", err)
 	}
 	return ctrl.Result{}, nil
 }
