@@ -19,12 +19,17 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
@@ -46,6 +51,7 @@ type OrganizationReconciler struct {
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update;
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
 
 // Reconcile function reconciles the Organization object which specified by the request. Currently, it does the following:
 // 1. Fetch the Organization object.
@@ -76,6 +82,9 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	if err := r.reconcileNamespace(ctx, log, organization); err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
 	}
+	if err := r.reconcileMembers(ctx, log, organization); err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
+	}
 
 	if !organization.IsReady() {
 		// Update Organization Status
@@ -99,6 +108,14 @@ func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.Organization{}).
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
+		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+				return []reconcile.Request{{
+					// Organization name is its namespace
+					NamespacedName: types.NamespacedName{Name: object.Meta.GetNamespace()},
+				}}
+			}),
+		}).
 		Complete(r)
 }
 
@@ -151,4 +168,35 @@ func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log log
 		}
 	}
 	return nil
+}
+
+func (r *OrganizationReconciler) reconcileMembers(ctx context.Context, log logr.Logger, organization *corev1alpha1.Organization) error {
+	rbs := &rbacv1.RoleBindingList{}
+	if err := r.List(ctx, rbs, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
+		return fmt.Errorf("list rolebindings: %w", err)
+	}
+	organization.Status.Members = r.extractSubjects(rbs)
+	if err := r.Status().Update(ctx, organization); err != nil {
+		return fmt.Errorf("updating members: %w", err)
+	}
+	return nil
+}
+
+func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []rbacv1.Subject {
+	var subjects []rbacv1.Subject
+	for _, rb := range rbs.Items {
+		subjects = append(subjects, rb.Subjects...)
+	}
+	sort.Slice(subjects, func(i, j int) bool {
+		a := subjects[i]
+		b := subjects[j]
+		return a.String() < b.String()
+	})
+	filteredSubjects := make([]rbacv1.Subject, 0, len(subjects))
+	for i := range subjects {
+		if i == 0 || subjects[i-1].String() != subjects[i].String() {
+			filteredSubjects = append(filteredSubjects, subjects[i])
+		}
+	}
+	return filteredSubjects
 }
