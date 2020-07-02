@@ -85,7 +85,7 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	organization.Status.Members = members
 
 	if err := r.Status().Update(ctx, organization); err != nil {
-		return ctrl.Result{}, fmt.Errorf("updating finalizers: %w", err)
+		return ctrl.Result{}, fmt.Errorf("updating status: %w", err)
 	}
 
 	if err := r.reconcileNamespace(ctx, log, organization); err != nil {
