@@ -81,14 +81,6 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		}
 	}
 
-	var members []rbacv1.Subject
-	members = append(members, organization.Spec.Owners...)
-	organization.Status.Members = members
-
-	if err := r.Status().Update(ctx, organization); err != nil {
-		return ctrl.Result{}, fmt.Errorf("updating status: %w", err)
-	}
-
 	if err := r.reconcileNamespace(ctx, log, organization); err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
 	}

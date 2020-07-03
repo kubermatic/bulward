@@ -987,24 +987,11 @@ func schema_pkg_apis_core_v1alpha1_OrganizationStatus(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
-					"members": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Members holds the RBAC subjects that represent the members (including owners) of this Organization.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/rbac/v1.Subject"),
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationCondition", "k8s.io/api/rbac/v1.Subject"},
+			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationCondition"},
 	}
 }
 
