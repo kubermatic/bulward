@@ -138,7 +138,6 @@ modfor:
 		if err := cl.Get(ctx, types.NamespacedName{Name: "test"}, org); err != nil {
 			t.Log("getting organization", err)
 			return false, nil
-
 		}
 		org.Labels = map[string]string{"aa": "bb"}
 		if err := cl.Update(ctx, org); err != nil {
