@@ -987,11 +987,24 @@ func schema_pkg_apis_core_v1alpha1_OrganizationStatus(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"members": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Members enumerate all rbacv1.Subject mentioned in the Organization RoleBinding's",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/rbac/v1.Subject"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationCondition"},
+			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationCondition", "k8s.io/api/rbac/v1.Subject"},
 	}
 }
 

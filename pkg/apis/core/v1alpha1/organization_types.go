@@ -54,6 +54,9 @@ type OrganizationStatus struct {
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
 	Phase OrganizationPhaseType `json:"phase,omitempty"`
+
+	// Members enumerate all rbacv1.Subject mentioned in the Organization RoleBinding's
+	Members []rbacv1.Subject `json:"members,omitempty"`
 }
 
 // OrganizationPhaseType represents all conditions as a single string for printing by using kubectl commands.
