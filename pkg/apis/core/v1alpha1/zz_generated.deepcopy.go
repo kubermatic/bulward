@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/api/rbac/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -163,6 +164,11 @@ func (in *OrganizationStatus) DeepCopyInto(out *OrganizationStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Members != nil {
+		in, out := &in.Members, &out.Members
+		*out = make([]v1.Subject, len(*in))
+		copy(*out, *in)
 	}
 }
 
