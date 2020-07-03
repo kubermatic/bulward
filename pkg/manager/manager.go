@@ -28,8 +28,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
+	"github.com/kubermatic/utils/pkg/util"
+
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
-	"github.com/kubermatic/bulward/pkg/internal/util"
 	"github.com/kubermatic/bulward/pkg/manager/internal/controllers"
 )
 
