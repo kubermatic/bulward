@@ -33,6 +33,7 @@ import (
 	"github.com/kubermatic/utils/pkg/util"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 func init() {
@@ -75,13 +76,13 @@ func TestCoreOrganization(t *testing.T) {
 
 	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: "project-admin",
+		Name: templates.ProjectAdminOrganizationRoleTemplateName,
 	}, projectTemplate))
 	assert.True(t, projectTemplate.IsReady())
 
 	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: "rbac-admin",
+		Name: templates.RBACAdminOrganizationRoleTemplateName,
 	}, rbacTemplate))
 	assert.True(t, rbacTemplate.IsReady())
 

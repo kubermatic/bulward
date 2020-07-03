@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,6 +37,7 @@ import (
 	"github.com/kubermatic/utils/pkg/util"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 const (
@@ -92,7 +92,7 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
 	}
 
-	if err := r.createDefaultOrganizationRoleTemplates(ctx); err != nil {
+	if err := r.createOrganizationRoleTemplates(ctx); err != nil {
 		return ctrl.Result{}, fmt.Errorf("creating default OrganizationRoleTemplates: %w", err)
 	}
 
@@ -209,81 +209,18 @@ func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []
 	}
 	return filteredSubjects
 }
-func (r *OrganizationReconciler) createDefaultOrganizationRoleTemplates(ctx context.Context) error {
-	desiredProjectAdminOrganizationRoleTemplate := r.buildProjectAdminOrganizationRoleTemplate()
-	desiredRBACAdminOrganizationRoleTemplate := r.buildRBACAdminOrganizationRoleTemplate()
 
-	if err := r.createOrganizationRoleTemplate(ctx, desiredProjectAdminOrganizationRoleTemplate); err != nil {
-		return fmt.Errorf("creating project-admin OrganizationRoleTemplate: %w", err)
-	}
+func (r *OrganizationReconciler) createOrganizationRoleTemplates(ctx context.Context) error {
+	ownerTemplates := templates.DefaultOrganizationRoleTemplatesForOwner()
 
-	if err := r.createOrganizationRoleTemplate(ctx, desiredRBACAdminOrganizationRoleTemplate); err != nil {
-		return fmt.Errorf("creating rbac-admin OrganizationRoleTemplate: %w", err)
-	}
-	return nil
-}
-
-func (r *OrganizationReconciler) createOrganizationRoleTemplate(ctx context.Context,
-	desiredOrganizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate,
-) error {
-	if err := r.Client.Create(ctx, desiredOrganizationRoleTemplate); err != nil {
-		if errors.IsAlreadyExists(err) {
-			// default OrganizationRoleTemplate is created by some other Organizations, no need to create again.
-			return nil
+	for _, template := range ownerTemplates {
+		if err := r.Client.Create(ctx, template); err != nil {
+			if errors.IsAlreadyExists(err) {
+				// default OrganizationRoleTemplate is created by some other Organizations, no need to create again.
+				continue
+			}
+			return fmt.Errorf("creating owner OrganizationRoleTemplate: %s: %w", template.Name, err)
 		}
-		return err
 	}
-	// default OrganizationRoleTemplate is created.
 	return nil
-}
-
-func (r *OrganizationReconciler) buildProjectAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate {
-	return &corev1alpha1.OrganizationRoleTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "project-admin",
-		},
-		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
-			Scopes: []corev1alpha1.RoleTemplateScope{
-				corev1alpha1.RoleTemplateScopeOrganization,
-			},
-			BindTo: []corev1alpha1.BindToType{
-				corev1alpha1.BindToOwners,
-			},
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"apiserver.bulward.io"},
-					Resources: []string{"projects"},
-					Verbs:     []string{rbacv1.VerbAll},
-				},
-			},
-		},
-	}
-}
-
-func (r *OrganizationReconciler) buildRBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate {
-	return &corev1alpha1.OrganizationRoleTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "rbac-admin",
-		},
-		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
-			Scopes: []corev1alpha1.RoleTemplateScope{
-				corev1alpha1.RoleTemplateScopeOrganization,
-			},
-			BindTo: []corev1alpha1.BindToType{
-				corev1alpha1.BindToOwners,
-			},
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
-					Resources: []string{"roles"},
-					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},
-				},
-				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
-					Resources: []string{"rolebindings"},
-					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
-				},
-			},
-		},
-	}
 }
