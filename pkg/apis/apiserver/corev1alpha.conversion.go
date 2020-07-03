@@ -20,16 +20,18 @@ import (
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
 
 func init() {
-	utilruntime.Must(Corev1alpha1RegisterConversion(builders.Scheme))
-	utilruntime.Must(RegisterConversions(builders.Scheme))
-	utilruntime.Must(RegisterDefaults(builders.Scheme))
+	SchemeBuilder = append(
+		SchemeBuilder,
+		Corev1alpha1RegisterConversion,
+		RegisterConversions,
+		RegisterDefaults,
+	)
+	AddToScheme = SchemeBuilder.AddToScheme
 }
 
 func Corev1alpha1RegisterConversion(scheme *runtime.Scheme) error {

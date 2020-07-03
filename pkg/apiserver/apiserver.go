@@ -56,7 +56,6 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(builders.Scheme))
 	utilruntime.Must(apiserverapi.AddToScheme(builders.Scheme))
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(builders.Scheme))
-	utilruntime.Must(apiserverapi.Corev1alpha1RegisterConversion(builders.Scheme))
 }
 
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 
-	authorizationv1 "k8s.io/api/authorization/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -34,7 +33,6 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
@@ -56,7 +54,7 @@ var (
 // +k8s:deepcopy-gen=false
 type OrganizationREST struct {
 	client    client.Client
-	dynamicRI dynamic.NamespaceableResourceInterface
+	dynamicRI dynamic.ResourceInterface
 	mapper    meta.RESTMapper
 	scheme    *runtime.Scheme
 }
@@ -339,39 +337,7 @@ func internalErrorWatchEvent(err error) watch.Event {
 }
 
 func (o *OrganizationREST) isVisible(ctx context.Context, organizationName string, verb string) (bool, error) {
-	a, err := filters.GetAuthorizerAttributes(ctx)
-	if err != nil {
-		return false, err
-	}
-	user := a.GetUser()
-	if user == nil {
-		klog.Warning("user info missing; you're probably running API extension server with --delegated-auth=false")
-		return true, nil
-	}
-
-	extra := make(map[string]authorizationv1.ExtraValue)
-	for k, v := range user.GetExtra() {
-		extra[k] = v
-	}
-	subjectAccessReview := &authorizationv1.SubjectAccessReview{Spec: authorizationv1.SubjectAccessReviewSpec{
-		ResourceAttributes: &authorizationv1.ResourceAttributes{
-			Namespace:   a.GetNamespace(),
-			Verb:        verb,
-			Group:       corev1alpha1.GroupVersion.Group,
-			Version:     corev1alpha1.GroupVersion.Version,
-			Resource:    internalOrganizationResource,
-			Subresource: a.GetSubresource(),
-			Name:        organizationName,
-		},
-		NonResourceAttributes: nil,
-		User:                  user.GetName(),
-		Groups:                user.GetGroups(),
-		Extra:                 extra,
-		UID:                   user.GetUID(),
-	},
-	}
-	if err := o.client.Create(ctx, subjectAccessReview); err != nil {
-		return false, err
-	}
-	return subjectAccessReview.Status.Allowed, nil
+	// TODO: Placeholder for future PR implementation
+	// https://github.com/kubermatic/bulward/pull/27
+	return true, nil
 }
