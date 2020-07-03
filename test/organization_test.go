@@ -134,8 +134,13 @@ modfor:
 	t.Log("update")
 	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	t.Cleanup(cancel)
-	org.Labels = map[string]string{"aa": "bb"}
 	require.NoError(t, wait.PollUntil(time.Second, func() (done bool, err error) {
+		if err := cl.Get(ctx, types.NamespacedName{Name: "test"}, org); err != nil {
+			t.Log("getting organization", err)
+			return false, nil
+
+		}
+		org.Labels = map[string]string{"aa": "bb"}
 		if err := cl.Update(ctx, org); err != nil {
 			t.Log("updating organization", err)
 			return false, nil
