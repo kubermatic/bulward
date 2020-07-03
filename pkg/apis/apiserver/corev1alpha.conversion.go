@@ -25,12 +25,11 @@ import (
 )
 
 func init() {
-	SchemeBuilder = append(
-		SchemeBuilder,
+	localSchemeBuilder.Register(
 		Corev1alpha1RegisterConversion,
 		RegisterConversions,
-		RegisterDefaults,
 	)
+	// this is required due to all init trickery going on, and autogen code...
 	AddToScheme = SchemeBuilder.AddToScheme
 }
 
