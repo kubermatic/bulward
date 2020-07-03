@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
+	"github.com/kubermatic/bulward/pkg/apis/apiserver/convert"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
 
@@ -135,7 +136,7 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 	if err != nil {
 		return nil, err
 	}
-	return ConvertFromV1Alpha1Unstructured(org, o.scheme)
+	return convert.FromUnstructuredCoreV1Alpha1(org, o.scheme)
 }
 
 func (o *OrganizationREST) List(ctx context.Context, options *internalversion.ListOptions) (runtime.Object, error) {
@@ -147,7 +148,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	if err != nil {
 		return nil, err
 	}
-	sol, err := ConvertFromV1Alpha1UnstructuredList(orgs, o.scheme)
+	sol, err := convert.FromUnstructuredCoreV1Alpha1List(orgs, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +179,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	u, err := ConvertToV1Alpha1Unstructured(obj.(*Organization), o.scheme)
+	u, err := convert.ToUnstructuredCoreV1Alpha1Organization(obj.(*Organization), o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
-	return ConvertFromV1Alpha1Unstructured(ret, o.scheme)
+	return convert.FromUnstructuredCoreV1Alpha1(ret, o.scheme)
 }
 
 func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
@@ -232,7 +233,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 		return nil, false, err
 	}
 
-	u, err := ConvertToV1Alpha1Unstructured(newObj.(*Organization), o.scheme)
+	u, err := convert.ToUnstructuredCoreV1Alpha1Organization(newObj.(*Organization), o.scheme)
 	if err != nil {
 		return nil, false, err
 	}
@@ -246,7 +247,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 		return nil, false, err
 	}
 
-	retObj, err := ConvertFromV1Alpha1Unstructured(u, o.scheme)
+	retObj, err := convert.FromUnstructuredCoreV1Alpha1(u, o.scheme)
 	if err != nil {
 		return nil, false, err
 	}
@@ -304,7 +305,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					res <- ev
 					return
 				}
-				org, err := ConvertFromV1Alpha1Unstructured(ev.Object.(*unstructured.Unstructured), o.scheme)
+				org, err := convert.FromUnstructuredCoreV1Alpha1(ev.Object.(*unstructured.Unstructured), o.scheme)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
