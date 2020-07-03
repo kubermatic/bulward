@@ -167,7 +167,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 }
 
 func (o *OrganizationREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
-	return rest.NewDefaultTableConvertor(Resource("organizations")).ConvertToTable(ctx, object, tableOptions)
+	return rest.NewDefaultTableConvertor(Resource(externalOrganizationResource)).ConvertToTable(ctx, object, tableOptions)
 }
 
 func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {

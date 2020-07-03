@@ -25,12 +25,7 @@ import (
 )
 
 func init() {
-	localSchemeBuilder.Register(
-		Corev1alpha1RegisterConversion,
-		RegisterConversions,
-	)
-	// this is required due to all init trickery going on, and autogen code...
-	AddToScheme = SchemeBuilder.AddToScheme
+	localSchemeBuilder.Register(Corev1alpha1RegisterConversion)
 }
 
 func Corev1alpha1RegisterConversion(scheme *runtime.Scheme) error {
