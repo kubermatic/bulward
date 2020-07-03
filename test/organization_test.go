@@ -38,9 +38,9 @@ import (
 )
 
 func init() {
-	utilruntime.Must(corev1.AddToScheme(scheme.Scheme))
-	utilruntime.Must(corev1alpha1.AddToScheme(scheme.Scheme))
-	utilruntime.Must(apiserverv1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(corev1.AddToScheme(testScheme))
+	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
+	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
 
 func TestIntegration(t *testing.T) {
