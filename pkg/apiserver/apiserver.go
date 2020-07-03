@@ -36,6 +36,8 @@ import (
 
 	"github.com/kubermatic/bulward/pkg/apis"
 	apiserverapi "github.com/kubermatic/bulward/pkg/apis/apiserver"
+	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
+	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	"github.com/kubermatic/bulward/pkg/openapi"
 )
 
@@ -51,11 +53,15 @@ const (
 func init() {
 	// due to apiserver-builder-alpha usage we must use the following scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(builders.Scheme))
+	utilruntime.Must(corev1alpha1.AddToScheme(builders.Scheme))
+	utilruntime.Must(apiserverapi.AddToScheme(builders.Scheme))
+	utilruntime.Must(apiserverv1alpha1.AddToScheme(builders.Scheme))
 }
 
 // +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=create;get;list;watch;update;patch;delete
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")

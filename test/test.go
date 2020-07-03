@@ -15,3 +15,11 @@ limitations under the License.
 */
 
 package test
+
+import (
+	"k8s.io/client-go/kubernetes/scheme"
+)
+
+var (
+	testScheme = scheme.Scheme
+)

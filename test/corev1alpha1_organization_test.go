@@ -34,10 +34,6 @@ import (
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
 
-var (
-	testScheme = scheme.Scheme
-)
-
 func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
 	utilruntime.Must(scheme.AddToScheme(testScheme))
