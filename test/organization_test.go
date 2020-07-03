@@ -45,7 +45,7 @@ func init() {
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
 
-func TestIntegration(t *testing.T) {
+func TestAPIServerOrganization(t *testing.T) {
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
