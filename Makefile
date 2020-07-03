@@ -16,6 +16,7 @@ CERTMANAGER_VERSION = v0.14.0
 COMPONENTS = manager apiserver
 IMAGE_ORG = quay.io/kubermatic
 KIND_CLUSTER ?= bulward
+KUBECONFIG ?= ${HOME}/.kube/kind-config-${KIND_CLUSTER}
 SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
 VERSION = v1
@@ -55,31 +56,25 @@ generate:
 setup-cluster: require-docker
 	@mkdir -p /tmp/bulward-hack
 	@cp ./hack/audit.yaml /tmp/bulward-hack
-	@kind create cluster --retain --config=./hack/kind-config.yaml --name=bulward --image=${KIND_NODE_IMAGE} || true
-	@kind get kubeconfig --name=bulward > "${HOME}/.kube/kind-config-bulward"
-	@echo "Deploy cert-manger in management cluster"
-	# Deploy cert-manager right after the creation of the management cluster, since the deployments of cert-manger take some time to get ready.
-	@$(MAKE) KUBECONFIG=${HOME}/.kube/kind-config-bulward cert-manager
-	# We need to make sure the namespace is created before we apply any namespace-scoped configurations into cluster.
+	@kind create cluster --retain --config=./hack/kind-config.yaml --name=${KIND_CLUSTER} --image=${KIND_NODE_IMAGE} || true
+	@kind get kubeconfig --name=${KIND_CLUSTER} > "${KUBECONFIG}"
 	@kubectl create namespace bulward-system || true  # ignore if exists
 
-setup: setup-cluster kind-load-manager kind-load-apiserver
-
-deploy-manager: setup
+deploy-manager: setup-cluster kind-load-manager
 	@echo "deploying manager"
 	@kubectl apply -k config/manager/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
-deploy-apiserver: setup
+deploy-apiserver: setup-cluster cert-manager kind-load-apiserver
 	@echo "deploying API extension server"
 	@#kubectl 1.18.3 has older kustomize version which improperly renders APIService name
 	@kustomize build config/apiserver/default | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	@kubectl apply -f config/apiserver/rbac/extension_apiserver_auth_role_binding.yaml
 	kubectl wait --for=condition=available deployment/bulward-apiserver-controller-manager -n bulward-system --timeout=120s
 
-deploy: setup deploy-apiserver deploy-manager
+deploy: deploy-apiserver deploy-manager
 
-e2e-test: setup deploy
+e2e-test: deploy
 	@./hack/e2e-test.sh
 
 # ------------
@@ -113,13 +108,14 @@ require-docker:
 .PHONY: require-docker
 
 # Install cert-manager in the configured Kubernetes cluster
-cert-manager:
+cert-manager: setup-cluster
+	@echo "Deploy cert-manger in management cluster"
 	docker pull quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION}
 	docker pull quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION}
 	docker pull quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION}
-	kind load docker-image quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION} --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION} --name=bulward
-	kind load docker-image quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION} --name=bulward
+	kind load docker-image quay.io/jetstack/cert-manager-controller:${CERTMANAGER_VERSION} --name=${KIND_CLUSTER}
+	kind load docker-image quay.io/jetstack/cert-manager-cainjector:${CERTMANAGER_VERSION} --name=${KIND_CLUSTER}
+	kind load docker-image quay.io/jetstack/cert-manager-webhook:${CERTMANAGER_VERSION} --name=${KIND_CLUSTER}
 	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/${CERTMANAGER_VERSION}/cert-manager.yaml
 	kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=120s
 	kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=120s
@@ -155,5 +151,5 @@ push-image-test: build-image-test require-docker
 # -------
 clean:
 	@rm -rf bin/$*
-	@kind delete cluster --name=bulward
+	@kind delete cluster --name=${KIND_CLUSTER}
 .PHONY: clean

@@ -1,24 +1,4 @@
 presubmits:
-  - name: pull-kubermatic-bulward-validate-prow-yaml
-    always_run: true
-    decorate: true
-    clone_uri: ssh://git@github.com/kubermatic/bulward.git
-    extra_refs:
-      - org: kubermatic
-        repo: infra
-        base_ref: master
-        clone_uri: git@github.com:kubermatic/infra.git
-    spec:
-      containers:
-        - image: gcr.io/k8s-prow/checkconfig:v20200203-711d3732b
-          command:
-            - /app/prow/cmd/checkconfig/app.binary
-          args:
-            - --plugin-config=/home/prow/go/src/github.com/kubermatic/infra/prow/plugins.yaml
-            - --config-path=/home/prow/go/src/github.com/kubermatic/infra/prow/config.yaml
-            - --job-config-path=/home/prow/go/src/github.com/kubermatic/infra/prow/jobs
-            - --prow-yaml-repo-name=$(REPO_OWNER)/$(REPO_NAME)
-
   - name: pull-bulward-test
     always_run: true
     decorate: true
@@ -36,7 +16,6 @@ presubmits:
           resources:
             requests:
               cpu: 4
-
   - name: pull-bulward-lint
     always_run: true
     decorate: true
@@ -55,7 +34,6 @@ presubmits:
                 requests:
                   cpu: 4
                   memory: 6Gi
-
   - name: pull-bulward-e2e-v1.16
     always_run: true
     decorate: true
@@ -102,7 +80,6 @@ presubmits:
             requests:
               cpu: 3
               memory: 4Gi
-
   - name: pull-bulward-e2e-v1.17
     always_run: true
     decorate: true
@@ -149,7 +126,6 @@ presubmits:
             requests:
               cpu: 3
               memory: 4Gi
-
 postsubmits:
   - name: post-bulward-test-image
     decorate: true
