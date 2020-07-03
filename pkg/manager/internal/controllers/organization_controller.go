@@ -28,8 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
-	"github.com/kubermatic/bulward/pkg/internal/owner"
-	"github.com/kubermatic/bulward/pkg/internal/util"
+	"github.com/kubermatic/utils/pkg/owner"
+	"github.com/kubermatic/utils/pkg/util"
 )
 
 const (
