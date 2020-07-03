@@ -19,19 +19,17 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -55,7 +53,7 @@ type OrganizationReconciler struct {
 
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=create
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
 
@@ -94,31 +92,11 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
 	}
 
-	templates, err := r.reconcileOrganizationRoleTemplates(ctx, organization)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("reconciling OrganizationRoleTemplates: %w", err)
+	if err := r.createDefaultOrganizationRoleTemplates(ctx); err != nil {
+		return ctrl.Result{}, fmt.Errorf("creating default OrganizationRoleTemplates: %w", err)
 	}
 
-	var unreadyTemplateNames []string
-	for _, template := range templates {
-		if !template.IsReady() {
-			unreadyTemplateNames = append(unreadyTemplateNames, template.Name)
-		}
-	}
-
-	if len(unreadyTemplateNames) > 0 {
-		// Update Organization Status
-		organization.Status.ObservedGeneration = organization.Generation
-		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
-			Type:    corev1alpha1.OrganizationReady,
-			Status:  corev1alpha1.ConditionFalse,
-			Reason:  "OrganizationRoleTemplatesUnready",
-			Message: fmt.Sprintf("Some OrganizationRoleTemplates objects for owners are unready [%s]", strings.Join(unreadyTemplateNames, ",")),
-		})
-		if err := r.Status().Update(ctx, organization); err != nil {
-			return ctrl.Result{}, fmt.Errorf("updating Organization status: %w", err)
-		}
-	} else if !organization.IsReady() {
+	if !organization.IsReady() {
 		organization.Status.ObservedGeneration = organization.Generation
 		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
 			Type:    corev1alpha1.OrganizationReady,
@@ -138,7 +116,6 @@ func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.Organization{}).
-		Owns(&corev1alpha1.OrganizationRoleTemplate{}).
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
 		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
@@ -232,53 +209,38 @@ func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []
 	}
 	return filteredSubjects
 }
-func (r *OrganizationReconciler) reconcileOrganizationRoleTemplates(ctx context.Context, organization *corev1alpha1.Organization) ([]*corev1alpha1.OrganizationRoleTemplate, error) {
-	desiredProjectAdminOrganizationRoleTemplate := r.buildProjectAdminOrganizationRoleTemplate(organization)
-	desiredRBACAdminOrganizationRoleTemplate := r.buildRBACAdminOrganizationRoleTemplate(organization)
+func (r *OrganizationReconciler) createDefaultOrganizationRoleTemplates(ctx context.Context) error {
+	desiredProjectAdminOrganizationRoleTemplate := r.buildProjectAdminOrganizationRoleTemplate()
+	desiredRBACAdminOrganizationRoleTemplate := r.buildRBACAdminOrganizationRoleTemplate()
 
-	var templates []*corev1alpha1.OrganizationRoleTemplate
-	projectTemplate, err := r.reconcileOrganizationRoleTemplate(ctx, organization, desiredProjectAdminOrganizationRoleTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("reconcile project-admin OrganizationRoleTemplate: %w", err)
+	if err := r.createOrganizationRoleTemplate(ctx, desiredProjectAdminOrganizationRoleTemplate); err != nil {
+		return fmt.Errorf("creating project-admin OrganizationRoleTemplate: %w", err)
 	}
-	templates = append(templates, projectTemplate)
 
-	rbacTemplate, err := r.reconcileOrganizationRoleTemplate(ctx, organization, desiredRBACAdminOrganizationRoleTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("reconcile rbac-admin OrganizationRoleTemplate: %w", err)
+	if err := r.createOrganizationRoleTemplate(ctx, desiredRBACAdminOrganizationRoleTemplate); err != nil {
+		return fmt.Errorf("creating rbac-admin OrganizationRoleTemplate: %w", err)
 	}
-	templates = append(templates, rbacTemplate)
-
-	return templates, nil
+	return nil
 }
 
-func (r *OrganizationReconciler) reconcileOrganizationRoleTemplate(ctx context.Context,
-	organization *corev1alpha1.Organization,
+func (r *OrganizationReconciler) createOrganizationRoleTemplate(ctx context.Context,
 	desiredOrganizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate,
-) (*corev1alpha1.OrganizationRoleTemplate, error) {
-
-	desired := desiredOrganizationRoleTemplate.DeepCopy()
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, desiredOrganizationRoleTemplate, func() error {
-		if err := controllerutil.SetControllerReference(
-			organization, desiredOrganizationRoleTemplate, r.Scheme); err != nil {
-			return fmt.Errorf("set controller reference: %w", err)
+) error {
+	if err := r.Client.Create(ctx, desiredOrganizationRoleTemplate); err != nil {
+		if errors.IsAlreadyExists(err) {
+			// default OrganizationRoleTemplate is created by some other Organizations, no need to create again.
+			return nil
 		}
-		if !reflect.DeepEqual(desired.Spec, desiredOrganizationRoleTemplate.Spec) {
-			desiredOrganizationRoleTemplate.Spec = desired.Spec
-		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("creating or updating OrganizationRoleTemplate: %w", err)
+		return err
 	}
-
-	return desiredOrganizationRoleTemplate, nil
+	// default OrganizationRoleTemplate is created.
+	return nil
 }
 
-func (r *OrganizationReconciler) buildProjectAdminOrganizationRoleTemplate(organization *corev1alpha1.Organization) *corev1alpha1.OrganizationRoleTemplate {
+func (r *OrganizationReconciler) buildProjectAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate {
 	return &corev1alpha1.OrganizationRoleTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "project-admin",
-			Namespace: organization.Status.Namespace.Name,
+			Name: "project-admin",
 		},
 		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
 			Scopes: []corev1alpha1.RoleTemplateScope{
@@ -298,11 +260,10 @@ func (r *OrganizationReconciler) buildProjectAdminOrganizationRoleTemplate(organ
 	}
 }
 
-func (r *OrganizationReconciler) buildRBACAdminOrganizationRoleTemplate(organization *corev1alpha1.Organization) *corev1alpha1.OrganizationRoleTemplate {
+func (r *OrganizationReconciler) buildRBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate {
 	return &corev1alpha1.OrganizationRoleTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rbac-admin",
-			Namespace: organization.Status.Namespace.Name,
+			Name: "rbac-admin",
 		},
 		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
 			Scopes: []corev1alpha1.RoleTemplateScope{
