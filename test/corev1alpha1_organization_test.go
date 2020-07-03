@@ -78,13 +78,11 @@ func TestCoreOrganization(t *testing.T) {
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{
 		Name: templates.ProjectAdminOrganizationRoleTemplateName,
 	}, projectTemplate))
-	assert.True(t, projectTemplate.IsReady())
 
 	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{
 		Name: templates.RBACAdminOrganizationRoleTemplateName,
 	}, rbacTemplate))
-	assert.True(t, rbacTemplate.IsReady())
 
 	assert.Empty(t, org.Status.Members)
 	rbacSubject := rbacv1.Subject{
