@@ -19,25 +19,50 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"net/http"
 
-	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
+	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+)
+
+const (
+	internalOrganizationResource = "organizations"
+	externalOrganizationResource = "organizations"
+)
+
+var (
+	qualifiedResource = schema.GroupResource{
+		Group:    SchemeGroupVersion.Group,
+		Resource: externalOrganizationResource,
+	}
 )
 
 // +k8s:deepcopy-gen=false
 type OrganizationREST struct {
-	client  client.Client
-	dynamic dynamic.Interface
-	mapper  meta.RESTMapper
-	scheme  *runtime.Scheme
+	client    client.Client
+	dynamicRI dynamic.ResourceInterface
+	mapper    meta.RESTMapper
+	scheme    *runtime.Scheme
+}
+
+var OrganizationRESTSingleton = &OrganizationREST{}
+
+func NewOrganizationREST(_ generic.RESTOptionsGetter) rest.Storage {
+	return OrganizationRESTSingleton
 }
 
 var _ inject.Client = (*OrganizationREST)(nil)
@@ -51,7 +76,6 @@ func (o *OrganizationREST) InjectMapper(mapper meta.RESTMapper) error {
 	o.mapper = mapper
 	return nil
 }
-
 func (o *OrganizationREST) InjectClient(c client.Client) error {
 	if o.client != nil {
 		return fmt.Errorf("client already injected")
@@ -61,10 +85,10 @@ func (o *OrganizationREST) InjectClient(c client.Client) error {
 }
 
 func (o *OrganizationREST) InjectDynamicClient(dynamic dynamic.Interface) error {
-	if o.dynamic != nil {
-		return fmt.Errorf("dynamic already injected")
+	if o.dynamicRI != nil {
+		return fmt.Errorf("dynamicRI already injected")
 	}
-	o.dynamic = dynamic
+	o.dynamicRI = dynamic.Resource(corev1alpha1.GroupVersion.WithResource(internalOrganizationResource))
 	return nil
 }
 
@@ -80,18 +104,11 @@ var _ rest.Storage = (*OrganizationREST)(nil)
 var _ rest.Scoper = (*OrganizationREST)(nil)
 var _ rest.Getter = (*OrganizationREST)(nil)
 var _ rest.Lister = (*OrganizationREST)(nil)
-
-var OrganizationRESTSingleton = &OrganizationREST{}
-
-func NewOrganizationREST(_ generic.RESTOptionsGetter) rest.Storage {
-	return OrganizationRESTSingleton
-}
-
-var fakeOrg = &Organization{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "fake-org",
-	},
-}
+var _ rest.CreaterUpdater = (*OrganizationREST)(nil)
+var _ rest.GracefulDeleter = (*OrganizationREST)(nil)
+var _ rest.CollectionDeleter = (*OrganizationREST)(nil)
+var _ rest.Watcher = (*OrganizationREST)(nil)
+var _ rest.StandardStorage = (*OrganizationREST)(nil)
 
 func (o *OrganizationREST) New() runtime.Object {
 	return &Organization{}
@@ -106,19 +123,221 @@ func (o *OrganizationREST) NewList() runtime.Object {
 }
 
 func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	return fakeOrg, nil
+	visible, err := o.isVisible(ctx, name, "get")
+	if err != nil {
+		return nil, err
+	}
+	if !visible {
+		return nil, apierrors.NewNotFound(qualifiedResource, name)
+	}
+
+	org, err := o.dynamicRI.Get(ctx, name, *options)
+	if err != nil {
+		return nil, err
+	}
+	return ConvertFromUnstructuredCoreV1Alpha1(org, o.scheme)
 }
 
 func (o *OrganizationREST) List(ctx context.Context, options *internalversion.ListOptions) (runtime.Object, error) {
-	// TODO: Replace with a read implementation
-	// small test whether the client is properly injected
-	s := &v1.NamespaceList{}
-	if err := o.client.List(ctx, s); err != nil {
+	opts := &metav1.ListOptions{}
+	if err := o.scheme.Convert(options, opts, nil); err != nil {
 		return nil, err
 	}
-	return &OrganizationList{Items: []Organization{*fakeOrg}}, nil
+	orgs, err := o.dynamicRI.List(ctx, *opts)
+	if err != nil {
+		return nil, err
+	}
+	sol, err := ConvertFromUnstructuredCoreV1Alpha1List(orgs, o.scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	lst := sol.Items
+	sol.Items = nil
+	for _, it := range lst {
+		visible, err := o.isVisible(ctx, it.Name, "get")
+		if err != nil {
+			return nil, err
+		}
+		if visible {
+			sol.Items = append(sol.Items, it)
+		}
+	}
+	return sol, nil
 }
 
 func (o *OrganizationREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
-	return rest.NewDefaultTableConvertor(Resource("organizations")).ConvertToTable(ctx, object, tableOptions)
+	return rest.NewDefaultTableConvertor(Resource(externalOrganizationResource)).ConvertToTable(ctx, object, tableOptions)
+}
+
+func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
+	a, err := filters.GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := createValidation(ctx, obj); err != nil {
+		return nil, err
+	}
+	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(obj.(*Organization), o.scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	var subresource []string
+	if a.GetSubresource() != "" {
+		subresource = append(subresource, a.GetSubresource())
+	}
+	ret, err := o.dynamicRI.Create(ctx, u, *options, subresource...)
+	if err != nil {
+		return nil, err
+	}
+	return ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+}
+
+func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	visible, err := o.isVisible(ctx, name, "delete")
+	if err != nil {
+		return nil, false, err
+	}
+	if !visible {
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
+	}
+
+	a, err := filters.GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+
+	preconditions := objInfo.Preconditions()
+	rv := ""
+	if preconditions != nil && preconditions.ResourceVersion != nil {
+		rv = *preconditions.ResourceVersion
+	}
+	objUntyped, err := o.Get(ctx, name, &metav1.GetOptions{
+		TypeMeta:        options.TypeMeta,
+		ResourceVersion: rv,
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	oldObj := objUntyped.(*Organization)
+	if preconditions != nil && preconditions.UID != nil && oldObj.UID != *preconditions.UID {
+		return nil, false, fmt.Errorf("UID differs, precondition UID: %s, found %s", *preconditions.UID, oldObj.UID)
+	}
+	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
+	if err != nil {
+		return nil, false, err
+	}
+	if err := updateValidation(ctx, newObj, oldObj); err != nil {
+		return nil, false, err
+	}
+
+	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(newObj.(*Organization), o.scheme)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var subresource []string
+	if a.GetSubresource() != "" {
+		subresource = append(subresource, a.GetSubresource())
+	}
+	u, err = o.dynamicRI.Update(ctx, u, *options, subresource...)
+	if err != nil {
+		return nil, false, err
+	}
+
+	retObj, err := ConvertFromUnstructuredCoreV1Alpha1(u, o.scheme)
+	if err != nil {
+		return nil, false, err
+	}
+	return retObj, false, nil
+}
+
+func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
+	visible, err := o.isVisible(ctx, name, "delete")
+	if err != nil {
+		return nil, false, err
+	}
+	if !visible {
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
+	}
+	obj, err := o.Get(ctx, name, &metav1.GetOptions{})
+	if err != nil {
+		return nil, false, err
+	}
+	if err := deleteValidation(ctx, obj); err != nil {
+		return obj, false, err
+	}
+	err = o.dynamicRI.Delete(ctx, name, *options)
+	return obj, false, err
+}
+
+func (o *OrganizationREST) DeleteCollection(ctx context.Context, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions, listOptions *internalversion.ListOptions) (runtime.Object, error) {
+	opts := &metav1.ListOptions{}
+	if err := o.scheme.Convert(listOptions, opts, nil); err != nil {
+		return nil, err
+	}
+	err := o.dynamicRI.DeleteCollection(ctx, *options, *opts)
+	return nil, err
+}
+
+func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.ListOptions) (watch.Interface, error) {
+	opts := &metav1.ListOptions{}
+	if err := o.scheme.Convert(options, opts, nil); err != nil {
+		return nil, err
+	}
+	wi, err := o.dynamicRI.Watch(ctx, *opts)
+	if err != nil {
+		return nil, err
+	}
+	res := make(chan watch.Event)
+	pw := watch.NewProxyWatcher(res)
+	go func() {
+		defer wi.Stop()
+		defer close(res)
+		for {
+			select {
+			case <-pw.StopChan():
+				return
+			case ev := <-wi.ResultChan():
+				if ev.Type == watch.Error {
+					res <- ev
+					return
+				}
+				org, err := ConvertFromUnstructuredCoreV1Alpha1(ev.Object.(*unstructured.Unstructured), o.scheme)
+				if err != nil {
+					res <- internalErrorWatchEvent(err)
+					return
+				}
+				ev.Object = org
+				visible, err := o.isVisible(ctx, org.Name, "watch")
+				if err != nil {
+					res <- internalErrorWatchEvent(err)
+					return
+				}
+				if visible {
+					res <- ev
+				}
+			}
+		}
+	}()
+	return pw, nil
+}
+
+func internalErrorWatchEvent(err error) watch.Event {
+	return watch.Event{
+		Type: watch.Error,
+		Object: &metav1.Status{
+			Status:  "error",
+			Message: err.Error(),
+			Reason:  metav1.StatusReasonInternalError,
+			Code:    http.StatusInternalServerError,
+		},
+	}
+}
+
+func (o *OrganizationREST) isVisible(ctx context.Context, organizationName string, verb string) (bool, error) {
+	// TODO: Placeholder for future PR implementation
+	// https://github.com/kubermatic/bulward/pull/27
+	return true, nil
 }
