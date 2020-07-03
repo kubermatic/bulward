@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -131,7 +132,16 @@ modfor:
 	}
 
 	t.Log("update")
+	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	t.Cleanup(cancel)
 	org.Labels = map[string]string{"aa": "bb"}
+	require.NoError(t, wait.PollUntil(time.Second, func() (done bool, err error) {
+		if err := cl.Update(ctx, org); err != nil {
+			t.Log("updating organization", err)
+			return false, nil
+		}
+		return true, nil
+	}, updateCtx.Done()))
 	assert.NoError(t, cl.Update(ctx, org))
 
 	org = &apiserverv1alpha1.Organization{}
