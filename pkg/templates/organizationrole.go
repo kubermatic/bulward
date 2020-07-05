@@ -28,7 +28,7 @@ const (
 	RBACAdminOrganizationRoleTemplateName    = "rbac-admin"
 )
 
-func DefaultOrganizationRoleTemplatesForOwner() []*corev1alpha1.OrganizationRoleTemplate {
+func DefaultOrganizationRoleTemplatesForOwners() []*corev1alpha1.OrganizationRoleTemplate {
 	return []*corev1alpha1.OrganizationRoleTemplate{ProjectAdminOrganizationRoleTemplate(), RBACAdminOrganizationRoleTemplate()}
 }
 

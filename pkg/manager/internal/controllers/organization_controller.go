@@ -92,8 +92,8 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
 	}
 
-	if err := r.createOrganizationRoleTemplates(ctx); err != nil {
-		return ctrl.Result{}, fmt.Errorf("creating default OrganizationRoleTemplates: %w", err)
+	if err := r.checkOrganizationRoleTemplatesForOwners(ctx); err != nil {
+		return ctrl.Result{}, fmt.Errorf("checking default OrganizationRoleTemplates: %w", err)
 	}
 
 	if !organization.IsReady() {
@@ -210,13 +210,16 @@ func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []
 	return filteredSubjects
 }
 
-func (r *OrganizationReconciler) createOrganizationRoleTemplates(ctx context.Context) error {
-	ownerTemplates := templates.DefaultOrganizationRoleTemplatesForOwner()
+// checkOrganizationRoleTemplatesForOwners checks if the bulward pre-defined OrganizationRoleTemplates for Organization owners
+// (project-admin, rbac-admin) are present. If not, just create them.
+func (r *OrganizationReconciler) checkOrganizationRoleTemplatesForOwners(ctx context.Context) error {
+	ownerTemplates := templates.DefaultOrganizationRoleTemplatesForOwners()
 
 	for _, template := range ownerTemplates {
 		if err := r.Client.Create(ctx, template); err != nil {
 			if errors.IsAlreadyExists(err) {
-				// default OrganizationRoleTemplate is created by some other Organizations, no need to create again.
+				// default OrganizationRoleTemplate is created by some other Organizations, and it will be shared across
+				// organizations in the system, so no need to create again.
 				continue
 			}
 			return fmt.Errorf("creating owner OrganizationRoleTemplate: %s: %w", template.Name, err)
