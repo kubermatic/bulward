@@ -213,6 +213,24 @@ func (s *OrganizationRoleTemplate) IsReady() bool {
 	return false
 }
 
+func (s *OrganizationRoleTemplate) HasScope(organizationRoleScope RoleTemplateScope) bool {
+	for _, scope := range s.Spec.Scopes {
+		if scope == organizationRoleScope {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *OrganizationRoleTemplate) HasBindTo(bindTo BindToType) bool {
+	for _, b := range s.Spec.BindTo {
+		if b == bindTo {
+			return true
+		}
+	}
+	return false
+}
+
 // OrganizationRoleTemplateList contains a list of OrganizationRoleTemplate.
 // +kubebuilder:object:root=true
 type OrganizationRoleTemplateList struct {

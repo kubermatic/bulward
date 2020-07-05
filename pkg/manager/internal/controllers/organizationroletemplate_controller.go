@@ -19,11 +19,15 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
@@ -37,6 +41,7 @@ type OrganizationRoleTemplateReconciler struct {
 
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
 
 func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -51,6 +56,19 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			return ctrl.Result{}, fmt.Errorf("handling deletion: %w", err)
 		}
 		return ctrl.Result{}, nil
+	}
+
+	organizations := &corev1alpha1.OrganizationList{}
+	if err := r.Client.List(ctx, organizations); err != nil {
+		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
+	}
+
+	for _, organization := range organizations.Items {
+		if organization.Status.Namespace != nil && organization.Status.Namespace.Name != "" {
+			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
+				return ctrl.Result{}, fmt.Errorf("reconcling Organization Role: %w", err)
+			}
+		}
 	}
 
 	if !organizationRoleTemplate.IsReady() {
@@ -70,9 +88,9 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 }
 
 func (r *OrganizationRoleTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.OrganizationRoleTemplate{}).
+		For(&corev1alpha1.Organization{}).
 		Complete(r)
 }
 
@@ -95,4 +113,104 @@ func (r *OrganizationRoleTemplateReconciler) handleDeletion(ctx context.Context,
 	}
 
 	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) reconcileRBAC(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
+	// Reconcile Roles, RoleBindings for organizations.
+	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
+		readyOrganizations, err := r.listReadyOrganizations(ctx)
+		if err != nil {
+			return fmt.Errorf("list ready Organizations: %w", err)
+		}
+
+		for _, organization := range readyOrganizations {
+			// Reconcile Roles and RoleBindings in Organization's namespace.
+			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, organization); err != nil {
+				return fmt.Errorf("reconciling RBAC for organization %s:%w", organization.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *corev1alpha1.Organization) error {
+	// Reconcile Role.
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      organizationRoleTemplate.Name,
+			Namespace: organization.Status.Namespace.Name,
+		},
+		Rules: organizationRoleTemplate.Spec.Rules,
+	}
+	if err := r.reconcileRole(ctx, role, organizationRoleTemplate); err != nil {
+		return err
+	}
+
+	// Reconcile RoleBindings.
+	if organizationRoleTemplate.HasBindTo(corev1alpha1.BindToOwners) {
+		roleBinding := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      organizationRoleTemplate.Name,
+				Namespace: organization.Status.Namespace.Name,
+			},
+			Subjects: organization.Spec.Owners,
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "Role",
+				Name:     role.Name,
+			},
+		}
+		if err := r.reconcileRoleBinding(ctx, roleBinding, organizationRoleTemplate); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) reconcileRole(ctx context.Context, role *rbacv1.Role, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
+	desiredRole := role.DeepCopy()
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, role, func() error {
+		if err := controllerutil.SetControllerReference(
+			organizationRoleTemplate, role, r.Scheme); err != nil {
+			return fmt.Errorf("set controller reference for Role: %w", err)
+		}
+		if !reflect.DeepEqual(role.Rules, desiredRole.Rules) {
+			role.Rules = desiredRole.Rules
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("creating or updating Role: %w", err)
+	}
+	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) reconcileRoleBinding(ctx context.Context, roleBinding *rbacv1.RoleBinding, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
+	desiredRoleBinding := roleBinding.DeepCopy()
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, roleBinding, func() error {
+		if err := controllerutil.SetControllerReference(
+			organizationRoleTemplate, roleBinding, r.Scheme); err != nil {
+			return fmt.Errorf("set controller reference for RoleBinding: %w", err)
+		}
+		if !reflect.DeepEqual(roleBinding.Subjects, desiredRoleBinding.Subjects) {
+			roleBinding.Subjects = desiredRoleBinding.Subjects
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("creating or updating RoleBinding: %w", err)
+	}
+	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) listReadyOrganizations(ctx context.Context) ([]*corev1alpha1.Organization, error) {
+	organizationList := &corev1alpha1.OrganizationList{}
+	if err := r.Client.List(ctx, organizationList); err != nil {
+		return nil, fmt.Errorf("listing Organizations: %w", err)
+	}
+	var readyOrganizations []*corev1alpha1.Organization
+	for _, organization := range organizationList.Items {
+		if organization.IsReady() {
+			readyOrganizations = append(readyOrganizations, &organization)
+		}
+	}
+	return readyOrganizations, nil
 }
