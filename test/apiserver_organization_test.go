@@ -44,7 +44,7 @@ func init() {
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
 
-func TestIntegration(t *testing.T) {
+func TestAPIServerOrganization(t *testing.T) {
 	description := "I'm a little test organization from Berlin."
 	org := &apiserverv1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
