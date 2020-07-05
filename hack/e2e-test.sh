@@ -44,4 +44,4 @@ function cleanup() {
 }
 
 trap cleanup EXIT
-go test -count=1 ./test/... | tee ${workdir}/test.out
+go test ./test/... | tee ${workdir}/test.out

@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -45,7 +44,7 @@ func init() {
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
 
-func TestAPIServerOrganization(t *testing.T) {
+func TestIntegration(t *testing.T) {
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -132,20 +131,7 @@ modfor:
 	}
 
 	t.Log("update")
-	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, wait.PollUntil(time.Second, func() (done bool, err error) {
-		if err := cl.Get(ctx, types.NamespacedName{Name: "test"}, org); err != nil {
-			t.Log("getting organization", err)
-			return false, nil
-		}
-		org.Labels = map[string]string{"aa": "bb"}
-		if err := cl.Update(ctx, org); err != nil {
-			t.Log("updating organization", err)
-			return false, nil
-		}
-		return true, nil
-	}, updateCtx.Done()))
+	org.Labels = map[string]string{"aa": "bb"}
 	assert.NoError(t, cl.Update(ctx, org))
 
 	org = &apiserverv1alpha1.Organization{}
