@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -122,8 +123,22 @@ modfor:
 	}
 
 	t.Log("update")
-	org.Labels = map[string]string{"aa": "bb"}
-	assert.NoError(t, cl.Update(ctx, org))
+	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	t.Cleanup(cancel)
+	require.NoError(t, wait.PollUntil(time.Second, func() (done bool, err error) {
+		// Use Poll based approach to update the Organization object because controller may modify the organization, and
+		// it can make update fails due to resource version conflicts.
+		if err := cl.Get(ctx, types.NamespacedName{Name: "test"}, org); err != nil {
+			t.Log("getting organization", err)
+			return false, nil
+		}
+		org.Labels = map[string]string{"aa": "bb"}
+		if err := cl.Update(ctx, org); err != nil {
+			t.Log("updating organization", err)
+			return false, nil
+		}
+		return true, nil
+	}, updateCtx.Done()))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
