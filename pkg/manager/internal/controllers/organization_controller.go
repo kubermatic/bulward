@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,9 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	"github.com/kubermatic/utils/pkg/owner"
 	"github.com/kubermatic/utils/pkg/util"
+
+	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 const (
@@ -48,8 +51,9 @@ type OrganizationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update;
+// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=create
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
 
@@ -57,7 +61,8 @@ type OrganizationReconciler struct {
 // 1. Fetch the Organization object.
 // 2. Handle the deletion of the Organization object (Remove the namespace that the Organization owns, and remove the finalizer).
 // 3. Handle the creation/update of the Organization object (Create/reconcile the namespace and insert the finalizer).
-// 4. Update the status of the Organization object.
+// 4. Create project-admin and rbac-admin OrganizationRoleTemplate for owners of the Organization.
+// 5. Update the status of the Organization object.
 func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("Organization", req.NamespacedName)
@@ -79,6 +84,7 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			return ctrl.Result{}, fmt.Errorf("updating finalizers: %w", err)
 		}
 	}
+
 	if err := r.reconcileNamespace(ctx, log, organization); err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
 	}
@@ -86,8 +92,11 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
 	}
 
+	if err := r.checkOrganizationRoleTemplatesForOwners(ctx); err != nil {
+		return ctrl.Result{}, fmt.Errorf("checking default OrganizationRoleTemplates: %w", err)
+	}
+
 	if !organization.IsReady() {
-		// Update Organization Status
 		organization.Status.ObservedGeneration = organization.Generation
 		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
 			Type:    corev1alpha1.OrganizationReady,
@@ -199,4 +208,22 @@ func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []
 		}
 	}
 	return filteredSubjects
+}
+
+// checkOrganizationRoleTemplatesForOwners checks if the bulward pre-defined OrganizationRoleTemplates for Organization owners
+// (project-admin, rbac-admin) are present. If not, just create them.
+func (r *OrganizationReconciler) checkOrganizationRoleTemplatesForOwners(ctx context.Context) error {
+	ownerTemplates := templates.DefaultOrganizationRoleTemplatesForOwners()
+
+	for _, template := range ownerTemplates {
+		if err := r.Client.Create(ctx, template); err != nil {
+			if errors.IsAlreadyExists(err) {
+				// default OrganizationRoleTemplate is created by some other Organizations, and it will be shared across
+				// organizations in the system, so no need to create again.
+				continue
+			}
+			return fmt.Errorf("creating owner OrganizationRoleTemplate: %s: %w", template.Name, err)
+		}
+	}
+	return nil
 }

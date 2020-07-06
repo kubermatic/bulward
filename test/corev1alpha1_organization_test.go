@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -32,6 +33,7 @@ import (
 	"github.com/kubermatic/utils/pkg/util"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 func init() {
@@ -50,20 +52,39 @@ func TestCoreOrganization(t *testing.T) {
 	cl := testutil.NewRecordingClient(cw, testScheme, t, testutil.CleanupOnSuccess)
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
+	owner := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "Owner1",
+	}
+
 	org := &corev1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "core-organization-test",
 		},
-		Spec: corev1alpha1.OrganizationSpec{Metadata: &corev1alpha1.OrganizationMetadata{
-			DisplayName: "berlin",
-			Description: "a humble organization of German capital",
-		}},
+		Spec: corev1alpha1.OrganizationSpec{
+			Metadata: &corev1alpha1.OrganizationMetadata{
+				DisplayName: "berlin",
+				Description: "a humble organization of German capital",
+			},
+			Owners: []rbacv1.Subject{owner},
+		},
 	}
 	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, org))
 	require.NoError(t, cl.Create(ctx, org))
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
-	assert.Empty(t, org.Status.Members)
 
+	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{}
+	require.NoError(t, cl.Get(ctx, types.NamespacedName{
+		Name: templates.ProjectAdminOrganizationRoleTemplateName,
+	}, projectTemplate))
+
+	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{}
+	require.NoError(t, cl.Get(ctx, types.NamespacedName{
+		Name: templates.RBACAdminOrganizationRoleTemplateName,
+	}, rbacTemplate))
+
+	assert.Empty(t, org.Status.Members)
 	rbacSubject := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",

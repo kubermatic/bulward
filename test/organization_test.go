@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -45,14 +46,22 @@ func init() {
 
 func TestIntegration(t *testing.T) {
 	description := "I'm a little test organization from Berlin."
+	owner := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "Owner1",
+	}
 	org := &apiserverv1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
-		Spec: corev1alpha1.OrganizationSpec{Metadata: &corev1alpha1.OrganizationMetadata{
-			DisplayName: "test",
-			Description: description,
-		}},
+		Spec: corev1alpha1.OrganizationSpec{
+			Metadata: &corev1alpha1.OrganizationMetadata{
+				DisplayName: "test",
+				Description: description,
+			},
+			Owners: []rbacv1.Subject{owner},
+		},
 	}
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)

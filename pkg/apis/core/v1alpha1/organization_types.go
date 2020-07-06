@@ -25,6 +25,9 @@ import (
 type OrganizationSpec struct {
 	// Metadata	contains additional human readable Organization details.
 	Metadata *OrganizationMetadata `json:"metadata,omitempty"`
+	// Owners holds the RBAC subjects that represent the owners of this organization.
+	// +kubebuilder:validation:MinItems=1
+	Owners []rbacv1.Subject `json:"owners"`
 }
 
 // OrganizationMetadata contains the metadata of the Organization.
