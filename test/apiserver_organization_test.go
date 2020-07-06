@@ -31,8 +31,9 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/kubermatic/utils/pkg/testutil"
 
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
@@ -44,7 +45,18 @@ func init() {
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
 
-func TestIntegration(t *testing.T) {
+func TestAPIServerOrganization(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	cfg, err := config.GetConfig()
+	require.NoError(t, err)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	require.NoError(t, err)
+	dcl, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return
+	}
+
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -63,19 +75,6 @@ func TestIntegration(t *testing.T) {
 			Owners: []rbacv1.Subject{owner},
 		},
 	}
-	cfg, err := config.GetConfig()
-	require.NoError(t, err)
-	cl, err := client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
-	})
-	require.NoError(t, err)
-	dcl, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
 
 	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
 	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
@@ -131,8 +130,10 @@ modfor:
 	}
 
 	t.Log("update")
-	org.Labels = map[string]string{"aa": "bb"}
-	assert.NoError(t, cl.Update(ctx, org))
+	require.NoError(t, testutil.TryUpdateUntil(ctx, cl, org, func() error {
+		org.Labels = map[string]string{"aa": "bb"}
+		return nil
+	}))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))

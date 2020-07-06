@@ -1,11 +1,17 @@
 # See the OWNERS docs: https://git.k8s.io/community/contributors/guide/owners.md
 
 approvers:
-  - thetechnick
+  - aborilov
   - jiachengxu
+  - lsviben
   - nmiculinic
+  - thetechnick
+  - zreigz
 
 reviewers:
-  - thetechnick
+  - aborilov
   - jiachengxu
+  - lsviben
   - nmiculinic
+  - thetechnick
+  - zreigz
