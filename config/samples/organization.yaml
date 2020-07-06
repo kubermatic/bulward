@@ -6,3 +6,7 @@ spec:
   metadata:
     displayName: The A Organization
     description: I am the first orgainzation of Bulward.
+  owners:
+  - kind: User
+    name: owner
+    apiGroup: rbac.authorization.k8s.io

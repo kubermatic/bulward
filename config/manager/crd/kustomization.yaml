@@ -3,4 +3,5 @@
 # It should be run by config/default
 resources:
   - bases/bulward.io_organizations.yaml
+  - bases/bulward.io_organizationroletemplates.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
