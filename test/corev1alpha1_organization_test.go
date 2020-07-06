@@ -25,31 +25,20 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	"github.com/kubermatic/utils/pkg/testutil"
-	"github.com/kubermatic/utils/pkg/util"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	"github.com/kubermatic/bulward/pkg/templates"
 )
-
-func init() {
-	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
-	utilruntime.Must(scheme.AddToScheme(testScheme))
-}
 
 func TestCoreOrganization(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()
 	require.NoError(t, err)
-	log := testutil.NewLogger(t)
-	cw, err := util.NewClientWatcher(cfg, testScheme, log)
-	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(cw, testScheme, t, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStragety))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	owner := rbacv1.Subject{

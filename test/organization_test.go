@@ -30,7 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -165,18 +167,122 @@ func TestVisibleFiltering(t *testing.T) {
 	require.NoError(t, err)
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStragety))
 
-	orgs := make([]*apiserver.Organization, 0, 3)
-	for _, name := range []string{
-		"user",
-		"grp",
-		"sa",
-	} {
-		org := &apiserver.Organization{}
-		org.Name = "test-" + name
-		require.NoError(t, cl.Create(ctx, org))
+	owner := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "Owner1",
+	}
+	testCase := []*struct {
+		Name    string
+		Subject rbacv1.Subject
+		Imp     rest.ImpersonationConfig
+		Org     *apiserverv1alpha1.Organization
+	}{
+		{
+			Name: "user",
+			Subject: rbacv1.Subject{
+				Kind:     rbacv1.UserKind,
+				APIGroup: rbacv1.GroupName,
+				Name:     "user",
+			},
+			Imp: rest.ImpersonationConfig{
+				UserName: "user",
+			},
+		},
+		{
+			Name: "group",
+			Subject: rbacv1.Subject{
+				Kind:     rbacv1.GroupKind,
+				APIGroup: rbacv1.GroupName,
+				Name:     "group",
+			},
+			Imp: rest.ImpersonationConfig{
+				UserName: "lala",
+				Groups:   []string{"dummy", "lala", "group"},
+			},
+		},
+		{
+			Name: "sa",
+			Subject: rbacv1.Subject{
+				Kind:      rbacv1.ServiceAccountKind,
+				APIGroup:  rbacv1.GroupName,
+				Name:      "default",
+				Namespace: "default",
+			},
+			Imp: rest.ImpersonationConfig{
+				UserName: "system:serviceaccount:default:default",
+			},
+		},
 	}
 
-	for _, org := range orgs {
-		require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
+	t.Log("creating orgs")
+	for _, tc := range testCase {
+		tc.Org = &apiserverv1alpha1.Organization{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-" + tc.Name,
+				Labels: map[string]string{
+					"test-name": t.Name(),
+				},
+			},
+			Spec: corev1alpha1.OrganizationSpec{
+				Metadata: &corev1alpha1.OrganizationMetadata{
+					DisplayName: "test",
+					Description: "desc",
+				},
+				Owners: []rbacv1.Subject{owner},
+			},
+		}
+		require.NoError(t, cl.Create(ctx, tc.Org))
+	}
+
+	t.Log("waiting for orgs ready")
+	for _, tc := range testCase {
+		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
+	}
+
+	t.Log("creating rolebindings in the orgs")
+	for _, tc := range testCase {
+		rb := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb",
+				Namespace: tc.Org.Status.Namespace.Name,
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     "Role",
+				Name:     "test",
+			},
+			Subjects: []rbacv1.Subject{tc.Subject},
+		}
+		require.NoError(t, cl.Create(ctx, rb))
+	}
+
+	t.Log("waiting for orgs member status updates")
+	for _, tc := range testCase {
+		require.NoError(t, cl.WaitUntil(ctx, tc.Org, func() (done bool, err error) {
+			for _, member := range tc.Org.Status.Members {
+				if member == tc.Subject {
+					return true, nil
+				}
+			}
+			return false, nil
+		}))
+	}
+
+	for _, tc := range testCase {
+		t.Run(tc.Name, func(t *testing.T) {
+			cfg, err := ctrl.GetConfig()
+			require.NoError(t, err)
+			cfg.Impersonate = tc.Imp
+			impCl, err := client.New(cfg, client.Options{
+				Scheme: testScheme,
+			})
+			require.NoError(t, err)
+			orgs := &apiserver.OrganizationList{}
+			require.NoError(t, impCl.List(ctx, orgs, client.MatchingLabels(tc.Org.Labels)))
+			if assert.Len(t, orgs.Items, 1) {
+				assert.Equal(t, tc.Org.Name, orgs.Items[0].Name)
+			}
+		})
 	}
 }

@@ -125,19 +125,23 @@ func (o *OrganizationREST) NewList() runtime.Object {
 }
 
 func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	visible, err := o.isVisible(ctx, name, "get")
+	uOrg, err := o.dynamicRI.Get(ctx, name, *options)
+	if err != nil {
+		return nil, err
+	}
+
+	org, err := ConvertFromUnstructuredCoreV1Alpha1(uOrg, o.scheme)
+	if err != nil {
+		return nil, err
+	}
+	visible, err := o.isVisible(ctx, org)
 	if err != nil {
 		return nil, err
 	}
 	if !visible {
 		return nil, apierrors.NewNotFound(qualifiedResource, name)
 	}
-
-	org, err := o.dynamicRI.Get(ctx, name, *options)
-	if err != nil {
-		return nil, err
-	}
-	return ConvertFromUnstructuredCoreV1Alpha1(org, o.scheme)
+	return org, nil
 }
 
 func (o *OrganizationREST) List(ctx context.Context, options *internalversion.ListOptions) (runtime.Object, error) {
@@ -157,7 +161,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	lst := sol.Items
 	sol.Items = nil
 	for _, it := range lst {
-		visible, err := o.isVisible(ctx, it.Name, "get")
+		visible, err := o.isVisible(ctx, &it)
 		if err != nil {
 			return nil, err
 		}
@@ -197,19 +201,10 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 }
 
 func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
-	visible, err := o.isVisible(ctx, name, "delete")
-	if err != nil {
-		return nil, false, err
-	}
-	if !visible {
-		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
-	}
-
 	a, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return nil, false, err
 	}
-
 	preconditions := objInfo.Preconditions()
 	rv := ""
 	if preconditions != nil && preconditions.ResourceVersion != nil {
@@ -226,6 +221,15 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 	if preconditions != nil && preconditions.UID != nil && oldObj.UID != *preconditions.UID {
 		return nil, false, fmt.Errorf("UID differs, precondition UID: %s, found %s", *preconditions.UID, oldObj.UID)
 	}
+
+	visible, err := o.isVisible(ctx, oldObj)
+	if err != nil {
+		return nil, false, err
+	}
+	if !visible {
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
+	}
+
 	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
 	if err != nil {
 		return nil, false, err
@@ -256,13 +260,6 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 }
 
 func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
-	visible, err := o.isVisible(ctx, name, "delete")
-	if err != nil {
-		return nil, false, err
-	}
-	if !visible {
-		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
-	}
 	obj, err := o.Get(ctx, name, &metav1.GetOptions{})
 	if err != nil {
 		return nil, false, err
@@ -312,7 +309,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					return
 				}
 				ev.Object = org
-				visible, err := o.isVisible(ctx, org.Name, "watch")
+				visible, err := o.isVisible(ctx, org)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
