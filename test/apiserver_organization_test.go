@@ -46,6 +46,8 @@ func init() {
 }
 
 func TestAPIServerOrganization(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
@@ -55,8 +57,6 @@ func TestAPIServerOrganization(t *testing.T) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
