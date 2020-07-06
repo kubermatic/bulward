@@ -838,7 +838,8 @@ func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateSpec(ref common.Refer
 					},
 					"rules": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Rules defnies the Role that this OrganizationRoleTemplate refers to.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -891,24 +892,11 @@ func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateStatus(ref common.Ref
 							Format:      "",
 						},
 					},
-					"members": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Members holds the RBAC subjects that represent the members (including owners) of this OrganizationRoleTemplate.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/rbac/v1.Subject"),
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateCondition", "k8s.io/api/rbac/v1.Subject"},
+			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateCondition"},
 	}
 }
 
