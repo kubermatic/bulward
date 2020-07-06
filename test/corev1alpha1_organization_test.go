@@ -85,6 +85,12 @@ func TestCoreOrganization(t *testing.T) {
 		},
 	}
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, rbacTemplate))
-	assert.Len(t, org.Status.Members, 1)
-	assert.Equal(t, org.Status.Members[0].Name, owner.Name)
+	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
+		if len(org.Status.Members) > 0 {
+			assert.Len(t, org.Status.Members, 1)
+			assert.Equal(t, org.Status.Members[0].Name, owner.Name)
+			return true, nil
+		}
+		return false, nil
+	}))
 }
