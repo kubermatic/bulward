@@ -157,24 +157,6 @@ func (r *OrganizationRoleTemplateReconciler) handleDeletion(ctx context.Context,
 	return nil
 }
 
-func (r *OrganizationRoleTemplateReconciler) reconcileRBAC(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
-	// Reconcile Roles, RoleBindings for organizations.
-	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
-		readyOrganizations, err := r.listReadyOrganizations(ctx)
-		if err != nil {
-			return fmt.Errorf("list ready Organizations: %w", err)
-		}
-
-		for _, organization := range readyOrganizations {
-			// Reconcile Roles and RoleBindings in Organization's namespace.
-			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, organization); err != nil {
-				return fmt.Errorf("reconciling RBAC for organization %s:%w", organization.Name, err)
-			}
-		}
-	}
-	return nil
-}
-
 func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *corev1alpha1.Organization) error {
 	// Reconcile Role.
 	role := &rbacv1.Role{
@@ -241,18 +223,4 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRoleBinding(ctx context.Co
 		return fmt.Errorf("creating or updating RoleBinding: %w", err)
 	}
 	return nil
-}
-
-func (r *OrganizationRoleTemplateReconciler) listReadyOrganizations(ctx context.Context) ([]*corev1alpha1.Organization, error) {
-	organizationList := &corev1alpha1.OrganizationList{}
-	if err := r.Client.List(ctx, organizationList); err != nil {
-		return nil, fmt.Errorf("listing Organizations: %w", err)
-	}
-	var readyOrganizations []*corev1alpha1.Organization
-	for _, organization := range organizationList.Items {
-		if organization.IsReady() {
-			readyOrganizations = append(readyOrganizations, &organization)
-		}
-	}
-	return readyOrganizations, nil
 }
