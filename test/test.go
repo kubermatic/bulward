@@ -17,9 +17,18 @@ limitations under the License.
 package test
 
 import (
+	"flag"
+
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 var (
-	testScheme = scheme.Scheme
+	cleanUpStragety = string(testutil.CleanupOnSuccess)
+	testScheme      = scheme.Scheme
 )
+
+func init() {
+	flag.StringVar(&cleanUpStragety, "clean-up-strategy", cleanUpStragety, "clean up strategy")
+}

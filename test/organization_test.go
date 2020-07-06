@@ -33,6 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	"github.com/kubermatic/utils/pkg/testutil"
+
+	"github.com/kubermatic/bulward/pkg/apis/apiserver"
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
@@ -44,6 +47,7 @@ func init() {
 }
 
 func TestIntegration(t *testing.T) {
+	t.Parallel()
 	description := "I'm a little test organization from Berlin."
 	org := &apiserverv1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
@@ -141,5 +145,29 @@ modfor:
 				break
 			}
 		}
+	}
+}
+
+func TestVisibleFiltering(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	cfg, err := config.GetConfig()
+	require.NoError(t, err)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStragety))
+
+	orgs := make([]*apiserver.Organization, 0, 3)
+	for _, name := range []string{
+		"user",
+		"grp",
+		"sa",
+	} {
+		org := &apiserver.Organization{}
+		org.Name = "test-" + name
+		require.NoError(t, cl.Create(ctx, org))
+	}
+
+	for _, org := range orgs {
+		require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 	}
 }

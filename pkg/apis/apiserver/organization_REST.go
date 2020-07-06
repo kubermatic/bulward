@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
@@ -336,8 +338,41 @@ func internalErrorWatchEvent(err error) watch.Event {
 	}
 }
 
-func (o *OrganizationREST) isVisible(ctx context.Context, organizationName string, verb string) (bool, error) {
-	// TODO: Placeholder for future PR implementation
-	// https://github.com/kubermatic/bulward/pull/27
-	return true, nil
+func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organization) (bool, error) {
+	attrs, err := filters.GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return false, err
+	}
+	user := attrs.GetUser()
+	if user == nil {
+		klog.Warning("unknown user, you may running API extension server with --delegated-auth=false")
+		return true, nil
+	}
+
+	for _, sub := range organization.Status.Members {
+		if sub.APIGroup != rbacv1.GroupName {
+			klog.Warning("unknown group name:" + sub.APIGroup + ", in organization " + organization.Name + " members, skipping")
+			continue
+		}
+		switch sub.Kind {
+		case rbacv1.UserKind:
+			if sub.Name == user.GetName() {
+				return true, nil
+			}
+		case rbacv1.GroupKind:
+			for _, grp := range user.GetGroups() {
+				if sub.Name == grp {
+					return true, nil
+				}
+			}
+		case rbacv1.ServiceAccountKind:
+			if "system:serviceaccount:"+sub.Namespace+":"+sub.Name == user.GetName() {
+				return true, nil
+			}
+		default:
+			klog.Warning("unknown subject kind:" + sub.Kind + ", in organization " + organization.Name + " members, skipping")
+			continue
+		}
+	}
+	return false, err
 }
