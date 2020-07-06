@@ -38,7 +38,6 @@ import (
 
 	"github.com/kubermatic/utils/pkg/testutil"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
@@ -55,7 +54,7 @@ func TestIntegration(t *testing.T) {
 	owner := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",
-		Name:     "Owner1",
+		Name:     "kubernetes-admin",
 	}
 	org := &apiserverv1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
@@ -165,12 +164,14 @@ func TestVisibleFiltering(t *testing.T) {
 	t.Cleanup(cancel)
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
+	cfg.UserAgent = t.Name()
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStragety))
+	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	owner := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",
-		Name:     "Owner1",
+		Name:     "kubernetes-admin",
 	}
 	testCase := []*struct {
 		Name    string
@@ -198,14 +199,14 @@ func TestVisibleFiltering(t *testing.T) {
 			},
 			Imp: rest.ImpersonationConfig{
 				UserName: "lala",
-				Groups:   []string{"dummy", "lala", "group"},
+				// without "system:authenticated" things are breaking...cannot RESTMapper doesn't function
+				Groups: []string{"system:authenticated", "group"},
 			},
 		},
 		{
 			Name: "sa",
 			Subject: rbacv1.Subject{
 				Kind:      rbacv1.ServiceAccountKind,
-				APIGroup:  rbacv1.GroupName,
 				Name:      "default",
 				Namespace: "default",
 			},
@@ -257,6 +258,34 @@ func TestVisibleFiltering(t *testing.T) {
 		require.NoError(t, cl.Create(ctx, rb))
 	}
 
+	t.Log("creating necessary cluster roles/rolebinding")
+	crole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bulward:test-visible-filtering",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Verbs:     []string{rbacv1.VerbAll},
+				APIGroups: []string{apiserverv1alpha1.SchemeGroupVersion.Group},
+				Resources: []string{rbacv1.ResourceAll},
+			},
+		},
+	}
+	crolebinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bulward:test-visible-filtering",
+		},
+		RoleRef: rbacv1.RoleRef{
+			Name: crole.Name,
+			Kind: "ClusterRole",
+		},
+	}
+	for _, tc := range testCase {
+		crolebinding.Subjects = append(crolebinding.Subjects, tc.Subject)
+	}
+	require.NoError(t, cl.EnsureCreated(ctx, crole))
+	require.NoError(t, cl.Create(ctx, crolebinding))
+
 	t.Log("waiting for orgs member status updates")
 	for _, tc := range testCase {
 		require.NoError(t, cl.WaitUntil(ctx, tc.Org, func() (done bool, err error) {
@@ -278,7 +307,7 @@ func TestVisibleFiltering(t *testing.T) {
 				Scheme: testScheme,
 			})
 			require.NoError(t, err)
-			orgs := &apiserver.OrganizationList{}
+			orgs := &apiserverv1alpha1.OrganizationList{}
 			require.NoError(t, impCl.List(ctx, orgs, client.MatchingLabels(tc.Org.Labels)))
 			if assert.Len(t, orgs.Items, 1) {
 				assert.Equal(t, tc.Org.Name, orgs.Items[0].Name)

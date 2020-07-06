@@ -197,7 +197,8 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
-	return ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+	obj, err = ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+	return obj, err
 }
 
 func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
@@ -298,7 +299,11 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 			select {
 			case <-pw.StopChan():
 				return
-			case ev := <-wi.ResultChan():
+			case ev, ok := <-wi.ResultChan():
+				if !ok {
+					// channel closed
+					return
+				}
 				if ev.Type == watch.Error {
 					res <- ev
 					return
@@ -346,11 +351,12 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 		return true, nil
 	}
 
-	for _, sub := range organization.Status.Members {
-		if sub.APIGroup != rbacv1.GroupName {
-			klog.Warning("unknown group name:" + sub.APIGroup + ", in organization " + organization.Name + " members, skipping")
-			continue
-		}
+	for _, sub := range append(
+		organization.Status.Members,
+		// This is important for seeing organizations you own before controller synces status
+		// otherwise a watch misses create event
+		organization.Spec.Owners...,
+	) {
 		switch sub.Kind {
 		case rbacv1.UserKind:
 			if sub.Name == user.GetName() {
@@ -363,7 +369,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 				}
 			}
 		case rbacv1.ServiceAccountKind:
-			if "system:serviceaccount:"+sub.Namespace+":"+sub.Name == user.GetName() {
+			if fmt.Sprintf("system:serviceaccount:%s:%s", sub.Namespace, sub.Name) == user.GetName() {
 				return true, nil
 			}
 		default:
