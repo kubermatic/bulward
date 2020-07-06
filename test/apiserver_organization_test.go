@@ -27,13 +27,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	"github.com/kubermatic/utils/pkg/testutil"
+	"github.com/kubermatic/utils/pkg/util"
 
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
@@ -46,6 +47,20 @@ func init() {
 }
 
 func TestAPIServerOrganization(t *testing.T) {
+	cfg, err := config.GetConfig()
+	require.NoError(t, err)
+	log := testutil.NewLogger(t)
+	cw, err := util.NewClientWatcher(cfg, testScheme, log)
+	require.NoError(t, err)
+	cl := testutil.NewRecordingClient(cw, testScheme, t, testutil.CleanupOnSuccess)
+	require.NoError(t, err)
+	dcl, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -64,19 +79,6 @@ func TestAPIServerOrganization(t *testing.T) {
 			Owners: []rbacv1.Subject{owner},
 		},
 	}
-	cfg, err := config.GetConfig()
-	require.NoError(t, err)
-	cl, err := client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
-	})
-	require.NoError(t, err)
-	dcl, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
 
 	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
 	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
@@ -132,22 +134,10 @@ modfor:
 	}
 
 	t.Log("update")
-	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, wait.PollUntil(time.Second, func() (done bool, err error) {
-		// Use Poll based approach to update the Organization object because controller may modify the organization, and
-		// it can make update fails due to resource version conflicts.
-		if err := cl.Get(ctx, types.NamespacedName{Name: "test"}, org); err != nil {
-			t.Log("getting organization", err)
-			return false, nil
-		}
+	require.NoError(t, updateObject(ctx, cl, org, func() error {
 		org.Labels = map[string]string{"aa": "bb"}
-		if err := cl.Update(ctx, org); err != nil {
-			t.Log("updating organization", err)
-			return false, nil
-		}
-		return true, nil
-	}, updateCtx.Done()))
+		return nil
+	}))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
