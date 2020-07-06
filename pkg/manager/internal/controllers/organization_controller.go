@@ -91,7 +91,6 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	if err := r.reconcileMembers(ctx, log, organization); err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
 	}
-
 	if err := r.checkOrganizationRoleTemplatesForOwners(ctx); err != nil {
 		return ctrl.Result{}, fmt.Errorf("checking default OrganizationRoleTemplates: %w", err)
 	}

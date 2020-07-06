@@ -29,7 +29,7 @@ type OrganizationRoleTemplateSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Scopes []RoleTemplateScope `json:"scopes"`
 	// BindTo defines the member types of the Organization that this OrganizationRoleTemplate will be bound to.
-	BindTo []BindToType `json:"bindTo,omitempty"`
+	BindTo []BindingType `json:"bindTo,omitempty"`
 	// Rules defnies the Role that this OrganizationRoleTemplate refers to.
 	Rules []rbacv1.PolicyRule `json:"rules"`
 }
@@ -43,11 +43,11 @@ const (
 )
 
 // +kubebuilder:validation:Enum=Owners;Everyone
-type BindToType string
+type BindingType string
 
 const (
-	BindToOwners   BindToType = "Owners"
-	BindToEveryone BindToType = "Everyone"
+	BindToOwners   BindingType = "Owners"
+	BindToEveryone BindingType = "Everyone"
 )
 
 // OrganizationRoleTemplateMetadata contains the metadata of the OrganizationRoleTemplate.
@@ -236,7 +236,7 @@ func (s *OrganizationRoleTemplate) HasScope(organizationRoleScope RoleTemplateSc
 	return false
 }
 
-func (s *OrganizationRoleTemplate) HasBindTo(bindTo BindToType) bool {
+func (s *OrganizationRoleTemplate) HasBinding(bindTo BindingType) bool {
 	for _, b := range s.Spec.BindTo {
 		if b == bindTo {
 			return true

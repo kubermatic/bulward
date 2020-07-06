@@ -235,7 +235,7 @@ func (in *OrganizationRoleTemplateSpec) DeepCopyInto(out *OrganizationRoleTempla
 	}
 	if in.BindTo != nil {
 		in, out := &in.BindTo, &out.BindTo
-		*out = make([]BindToType, len(*in))
+		*out = make([]BindingType, len(*in))
 		copy(*out, *in)
 	}
 	if in.Rules != nil {

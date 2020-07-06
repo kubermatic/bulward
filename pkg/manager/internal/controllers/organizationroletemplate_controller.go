@@ -71,7 +71,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 
 	var targets []corev1alpha1.OrganizationRoleTemplateTarget
 	for _, organization := range organizations.Items {
-		if organization.Status.Namespace != nil && organization.Status.Namespace.Name != "" {
+		if organization.IsReady() {
 			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
 				return ctrl.Result{}, fmt.Errorf("reconcling Organization Role: %w", err)
 			}
@@ -171,7 +171,7 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx co
 	}
 
 	// Reconcile RoleBindings.
-	if organizationRoleTemplate.HasBindTo(corev1alpha1.BindToOwners) {
+	if organizationRoleTemplate.HasBinding(corev1alpha1.BindToOwners) {
 		roleBinding := &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      organizationRoleTemplate.Name,
