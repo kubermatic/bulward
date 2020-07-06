@@ -32,7 +32,7 @@ var (
 	testScheme = scheme.Scheme
 )
 
-func updateObject(ctx context.Context, cl *testutil.RecordingClient, obj runtime.Object, updateFn func() error) error {
+func TryUpdateUntil(ctx context.Context, cl *testutil.RecordingClient, obj runtime.Object, updateFn func() error) error {
 	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	return wait.PollUntil(time.Second, func() (done bool, err error) {

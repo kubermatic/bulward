@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kubermatic/utils/pkg/testutil"
-	"github.com/kubermatic/utils/pkg/util"
 
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
@@ -49,10 +48,7 @@ func init() {
 func TestAPIServerOrganization(t *testing.T) {
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
-	log := testutil.NewLogger(t)
-	cw, err := util.NewClientWatcher(cfg, testScheme, log)
-	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(cw, testScheme, t, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
 	require.NoError(t, err)
 	dcl, err := dynamic.NewForConfig(cfg)
 	if err != nil {
@@ -134,7 +130,7 @@ modfor:
 	}
 
 	t.Log("update")
-	require.NoError(t, updateObject(ctx, cl, org, func() error {
+	require.NoError(t, TryUpdateUntil(ctx, cl, org, func() error {
 		org.Labels = map[string]string{"aa": "bb"}
 		return nil
 	}))
