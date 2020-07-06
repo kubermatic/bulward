@@ -45,6 +45,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateMetadata":  schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateMetadata(ref),
 		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateSpec":      schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateSpec(ref),
 		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateStatus":    schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateStatus(ref),
+		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateTarget":    schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateTarget(ref),
 		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationSpec":                  schema_pkg_apis_core_v1alpha1_OrganizationSpec(ref),
 		"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationStatus":                schema_pkg_apis_core_v1alpha1_OrganizationStatus(ref),
 		"k8s.io/api/apps/v1.ControllerRevision":                                                  schema_k8sio_api_apps_v1_ControllerRevision(ref),
@@ -838,7 +839,8 @@ func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateSpec(ref common.Refer
 					},
 					"rules": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Rules defnies the Role that this OrganizationRoleTemplate refers to.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -891,14 +893,14 @@ func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateStatus(ref common.Ref
 							Format:      "",
 						},
 					},
-					"members": {
+					"targets": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Members holds the RBAC subjects that represent the members (including owners) of this OrganizationRoleTemplate.",
+							Description: "Targets holds different targets(Organization, Project) that this OrganizationRoleTemplate targets to.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/rbac/v1.Subject"),
+										Ref: ref("github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateTarget"),
 									},
 								},
 							},
@@ -908,7 +910,48 @@ func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateStatus(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateCondition", "k8s.io/api/rbac/v1.Subject"},
+			"github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateCondition", "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1.OrganizationRoleTemplateTarget"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_OrganizationRoleTemplateTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind of target being referenced. Available values can be \"Organization\", \"Project\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiGroup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIGroup holds the API group of the referenced target, default \"bulward.io\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the target being referenced.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the most recent generation observed for this Target by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+				},
+				Required: []string{"kind", "name"},
+			},
+		},
 	}
 }
 

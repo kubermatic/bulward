@@ -75,6 +75,8 @@ spec:
                 - displayName
                 type: object
               rules:
+                description: Rules defnies the Role that this OrganizationRoleTemplate
+                  refers to.
                 items:
                   description: PolicyRule holds information that describes a policy
                     rule, but does not contain information about who the rule applies
@@ -176,39 +178,6 @@ spec:
                   - type
                   type: object
                 type: array
-              members:
-                description: Members holds the RBAC subjects that represent the members
-                  (including owners) of this OrganizationRoleTemplate.
-                items:
-                  description: Subject contains a reference to the object or user
-                    identities a role binding applies to.  This can either hold a
-                    direct API object reference, or a value for non-objects such as
-                    user and group names.
-                  properties:
-                    apiGroup:
-                      description: APIGroup holds the API group of the referenced
-                        subject. Defaults to "" for ServiceAccount subjects. Defaults
-                        to "rbac.authorization.k8s.io" for User and Group subjects.
-                      type: string
-                    kind:
-                      description: Kind of object being referenced. Values defined
-                        by this API group are "User", "Group", and "ServiceAccount".
-                        If the Authorizer does not recognized the kind value, the
-                        Authorizer should report an error.
-                      type: string
-                    name:
-                      description: Name of the object being referenced.
-                      type: string
-                    namespace:
-                      description: Namespace of the referenced object.  If the object
-                        kind is non-namespace, such as "User" or "Group", and this
-                        value is not empty the Authorizer should report an error.
-                      type: string
-                  required:
-                  - kind
-                  - name
-                  type: object
-                type: array
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this OrganizationRoleTemplate by the controller.
@@ -221,6 +190,36 @@ spec:
                   printing the property. This is only for display purpose, for everything
                   else use conditions.
                 type: string
+              targets:
+                description: Targets holds different targets(Organization, Project)
+                  that this OrganizationRoleTemplate targets to.
+                items:
+                  properties:
+                    apiGroup:
+                      default: bulward.io
+                      description: APIGroup holds the API group of the referenced
+                        target, default "bulward.io".
+                      type: string
+                    kind:
+                      description: Kind of target being referenced. Available values
+                        can be "Organization", "Project".
+                      enum:
+                      - Organization
+                      - Project
+                      type: string
+                    name:
+                      description: Name of the target being referenced.
+                      type: string
+                    observedGeneration:
+                      description: ObservedGeneration is the most recent generation
+                        observed for this Target by the controller.
+                      format: int64
+                      type: integer
+                  required:
+                  - kind
+                  - name
+                  type: object
+                type: array
             type: object
         type: object
     served: true

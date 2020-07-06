@@ -25,9 +25,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
@@ -42,6 +45,9 @@ type OrganizationRoleTemplateReconciler struct {
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=apiserver.bulward.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete;bind
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
 func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -63,14 +69,26 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
 	}
 
+	var targets []corev1alpha1.OrganizationRoleTemplateTarget
 	for _, organization := range organizations.Items {
 		if organization.Status.Namespace != nil && organization.Status.Namespace.Name != "" {
 			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
 				return ctrl.Result{}, fmt.Errorf("reconcling Organization Role: %w", err)
 			}
+			targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+				Kind:               organization.Kind,
+				APIGroup:           "bulward.io",
+				Name:               organization.Name,
+				ObservedGeneration: organization.Status.ObservedGeneration,
+			})
 		}
 	}
 
+	var isChanged bool
+	if !reflect.DeepEqual(targets, organizationRoleTemplate.Status.Targets) {
+		organizationRoleTemplate.Status.Targets = targets
+		isChanged = true
+	}
 	if !organizationRoleTemplate.IsReady() {
 		// Update OrganizationRoleTemplate Status
 		organizationRoleTemplate.Status.ObservedGeneration = organizationRoleTemplate.Generation
@@ -80,6 +98,10 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			Reason:  "SetupComplete",
 			Message: "OrganizationRoleTemplate setup is complete.",
 		})
+		isChanged = true
+	}
+
+	if isChanged {
 		if err := r.Status().Update(ctx, organizationRoleTemplate); err != nil {
 			return ctrl.Result{}, fmt.Errorf("updating OrganizationRoleTemplate status: %w", err)
 		}
@@ -90,7 +112,27 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 func (r *OrganizationRoleTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.OrganizationRoleTemplate{}).
-		For(&corev1alpha1.Organization{}).
+		Watches(&source.Kind{Type: &corev1alpha1.Organization{}}, &handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) (out []ctrl.Request) {
+				organization := mapObject.Object.(*corev1alpha1.Organization)
+				if !organization.IsReady() {
+					return
+				}
+				templates := &corev1alpha1.OrganizationRoleTemplateList{}
+				if err := r.Client.List(context.Background(), templates); err != nil {
+					// This will makes the manager crashes, and it will restart and reconcile all objects again.
+					panic(fmt.Errorf("listting OrganizationRoleTemplate: %w", err))
+				}
+				for _, template := range templates.Items {
+					out = append(out, ctrl.Request{
+						NamespacedName: types.NamespacedName{
+							Name: template.Name,
+						},
+					})
+				}
+				return
+			}),
+		}).
 		Complete(r)
 }
 

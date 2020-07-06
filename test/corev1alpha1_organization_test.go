@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -74,45 +73,18 @@ func TestCoreOrganization(t *testing.T) {
 	require.NoError(t, cl.Create(ctx, org))
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 
-	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{}
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: templates.ProjectAdminOrganizationRoleTemplateName,
-	}, projectTemplate))
-
-	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{}
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: templates.RBACAdminOrganizationRoleTemplateName,
-	}, rbacTemplate))
-
-	assert.Empty(t, org.Status.Members)
-	rbacSubject := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
-		Name:     "User1",
-	}
-
-	rb := &rbacv1.RoleBinding{
+	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "user1-rb",
-			Namespace: org.Status.Namespace.Name,
-		},
-		Subjects: []rbacv1.Subject{rbacSubject},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     "dummy",
+			Name: templates.ProjectAdminOrganizationRoleTemplateName,
 		},
 	}
-	require.NoError(t, cl.Create(ctx, rb))
-	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		if len(org.Status.Members) > 0 {
-			assert.Equal(t, []rbacv1.Subject{rbacSubject}, org.Status.Members)
-			return true, nil
-		}
-		return false, nil
-	}))
-	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, rb))
-	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		return len(org.Status.Members) == 0, nil
-	}), "organization never reached 0 memebers")
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, projectTemplate))
+	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: templates.RBACAdminOrganizationRoleTemplateName,
+		},
+	}
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, rbacTemplate))
+	assert.Len(t, org.Status.Members, 1)
+	assert.Equal(t, org.Status.Members[0].Name, owner.Name)
 }

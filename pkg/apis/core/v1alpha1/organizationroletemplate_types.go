@@ -29,8 +29,9 @@ type OrganizationRoleTemplateSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Scopes []RoleTemplateScope `json:"scopes"`
 	// BindTo defines the member types of the Organization that this OrganizationRoleTemplate will be bound to.
-	BindTo []BindToType        `json:"bindTo,omitempty"`
-	Rules  []rbacv1.PolicyRule `json:"rules"`
+	BindTo []BindToType `json:"bindTo,omitempty"`
+	// Rules defnies the Role that this OrganizationRoleTemplate refers to.
+	Rules []rbacv1.PolicyRule `json:"rules"`
 }
 
 // +kubebuilder:validation:Enum=Organization;Project
@@ -71,8 +72,21 @@ type OrganizationRoleTemplateStatus struct {
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
 	Phase OrganizationRoleTemplatePhaseType `json:"phase,omitempty"`
-	// Members holds the RBAC subjects that represent the members (including owners) of this OrganizationRoleTemplate.
-	Members []rbacv1.Subject `json:"members,omitempty"`
+	// Targets holds different targets(Organization, Project) that this OrganizationRoleTemplate targets to.
+	Targets []OrganizationRoleTemplateTarget `json:"targets,omitempty"`
+}
+
+type OrganizationRoleTemplateTarget struct {
+	// Kind of target being referenced. Available values can be "Organization", "Project".
+	// +kubebuilder:validation:Enum=Organization;Project
+	Kind string `json:"kind"`
+	// APIGroup holds the API group of the referenced target, default "bulward.io".
+	// +kubebuilder:default=bulward.io
+	APIGroup string `json:"apiGroup,omitempty"`
+	// Name of the target being referenced.
+	Name string `json:"name"`
+	// ObservedGeneration is the most recent generation observed for this Target by the controller.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // OrganizationRoleTemplatePhaseType represents all conditions as a single string for printing by using kubectl commands.
