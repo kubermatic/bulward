@@ -130,7 +130,7 @@ modfor:
 	}
 
 	t.Log("update")
-	require.NoError(t, TryUpdateUntil(ctx, cl, org, func() error {
+	require.NoError(t, testutil.TryUpdateUntil(ctx, cl, org, func() error {
 		org.Labels = map[string]string{"aa": "bb"}
 		return nil
 	}))

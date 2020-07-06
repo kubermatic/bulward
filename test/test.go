@@ -17,37 +17,9 @@ limitations under the License.
 package test
 
 import (
-	"context"
-	"time"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 var (
 	testScheme = scheme.Scheme
 )
-
-func TryUpdateUntil(ctx context.Context, cl *testutil.RecordingClient, obj runtime.Object, updateFn func() error) error {
-	updateCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	return wait.PollUntil(time.Second, func() (done bool, err error) {
-		if err := testutil.WaitUntilFound(updateCtx, cl, obj); err != nil {
-			return false, err
-		}
-		if err := updateFn(); err != nil {
-			return false, err
-		}
-		if err := cl.Update(updateCtx, obj); err != nil {
-			if errors.IsConflict(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	}, updateCtx.Done())
-}
