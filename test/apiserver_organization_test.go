@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -47,6 +48,10 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
+
+var (
+	gvr = apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
+)
 
 func TestAPIServerOrganization(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -79,7 +84,6 @@ func TestAPIServerOrganization(t *testing.T) {
 		},
 	}
 
-	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
 	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
 		FieldSelector: "metadata.name=test",
 	})
@@ -157,6 +161,15 @@ modfor:
 	}
 }
 
+type TestVisibleFilteringTestCase struct {
+	Name    string
+	Subject rbacv1.Subject
+	Imp     rest.ImpersonationConfig
+	Org     *apiserverv1alpha1.Organization
+	Client  *testutil.RecordingClient
+	wi      watch.Interface
+}
+
 func TestVisibleFiltering(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -172,12 +185,7 @@ func TestVisibleFiltering(t *testing.T) {
 		APIGroup: "rbac.authorization.k8s.io",
 		Name:     "kubernetes-admin",
 	}
-	testCase := []*struct {
-		Name    string
-		Subject rbacv1.Subject
-		Imp     rest.ImpersonationConfig
-		Org     *apiserverv1alpha1.Organization
-	}{
+	testCase := []*TestVisibleFilteringTestCase{
 		{
 			Name: "user",
 			Subject: rbacv1.Subject{
@@ -217,6 +225,20 @@ func TestVisibleFiltering(t *testing.T) {
 
 	t.Log("creating orgs")
 	for _, tc := range testCase {
+		cfg, err := ctrl.GetConfig()
+		require.NoError(t, err)
+		cfg.Impersonate = tc.Imp
+		tc.Client = testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
+		t.Cleanup(tc.Client.CleanUpFunc(ctx))
+		//dcl, err := dynamic.NewForConfig(cfg)
+		//require.NoError(t, err)
+		//wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+		//	LabelSelector: "test-name=" + t.Name(),
+		//})
+		//require.NoError(t, err)
+		//t.Cleanup(wi.Stop)
+		//tc.wi = wi
+
 		tc.Org = &apiserverv1alpha1.Organization{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-" + tc.Name,
@@ -233,13 +255,54 @@ func TestVisibleFiltering(t *testing.T) {
 			},
 		}
 		require.NoError(t, cl.Create(ctx, tc.Org))
-	}
-
-	t.Log("waiting for orgs ready")
-	for _, tc := range testCase {
 		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
 	}
 
+	ensureRBAC(t, ctx, cl, testCase)
+
+	t.Log("waiting for orgs member status updates")
+	for _, tc := range testCase {
+		require.NoError(t, cl.WaitUntil(ctx, tc.Org, func() (done bool, err error) {
+			for _, member := range tc.Org.Status.Members {
+				if member == tc.Subject {
+					return true, nil
+				}
+			}
+			return false, nil
+		}))
+	}
+
+	for i, tc := range testCase {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			t.Cleanup(cancel)
+			otherOrg := testCase[(i+1)%len(testCase)].Org
+
+			orgs := &apiserverv1alpha1.OrganizationList{}
+			require.NoError(t, tc.Client.List(ctx, orgs, client.MatchingLabels(tc.Org.Labels)))
+			if assert.Len(t, orgs.Items, 1) {
+				assert.Equal(t, tc.Org.Name, orgs.Items[0].Name)
+			}
+
+			org := &apiserverv1alpha1.Organization{}
+			assert.True(t, errors.IsNotFound(tc.Client.Get(ctx, types.NamespacedName{Name: otherOrg.Name}, org)), "found forbidden org")
+			require.NoError(t, tc.Client.Get(ctx, types.NamespacedName{Name: tc.Org.Name}, org), "get")
+			require.NoError(t, testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
+				if len(org.Spec.Owners) == 1 {
+					org.Spec.Owners = append(org.Spec.Owners, rbacv1.Subject{
+						Kind:     "User",
+						APIGroup: rbacv1.GroupName,
+						Name:     "testUser",
+					})
+				}
+				return nil
+			}), "update")
+			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
+		})
+	}
+}
+
+func ensureRBAC(t *testing.T, ctx context.Context, cl *testutil.RecordingClient, testCase []*TestVisibleFilteringTestCase) {
 	t.Log("creating rolebindings in the orgs")
 	for _, tc := range testCase {
 		rb := &rbacv1.RoleBinding{
@@ -283,34 +346,5 @@ func TestVisibleFiltering(t *testing.T) {
 		crolebinding.Subjects = append(crolebinding.Subjects, tc.Subject)
 	}
 	require.NoError(t, cl.EnsureCreated(ctx, crole))
-	require.NoError(t, cl.Create(ctx, crolebinding))
-
-	t.Log("waiting for orgs member status updates")
-	for _, tc := range testCase {
-		require.NoError(t, cl.WaitUntil(ctx, tc.Org, func() (done bool, err error) {
-			for _, member := range tc.Org.Status.Members {
-				if member == tc.Subject {
-					return true, nil
-				}
-			}
-			return false, nil
-		}))
-	}
-
-	for _, tc := range testCase {
-		t.Run(tc.Name, func(t *testing.T) {
-			cfg, err := ctrl.GetConfig()
-			require.NoError(t, err)
-			cfg.Impersonate = tc.Imp
-			impCl, err := client.New(cfg, client.Options{
-				Scheme: testScheme,
-			})
-			require.NoError(t, err)
-			orgs := &apiserverv1alpha1.OrganizationList{}
-			require.NoError(t, impCl.List(ctx, orgs, client.MatchingLabels(tc.Org.Labels)))
-			if assert.Len(t, orgs.Items, 1) {
-				assert.Equal(t, tc.Org.Name, orgs.Items[0].Name)
-			}
-		})
-	}
+	require.NoError(t, cl.EnsureCreated(ctx, crolebinding))
 }
