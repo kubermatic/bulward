@@ -353,7 +353,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 
 	for _, sub := range append(
 		organization.Status.Members,
-		// This is important for seeing organizations you own before controller synces status
+		// This is important for seeing organizations you own before controller syncs status
 		// otherwise a watch misses create event
 		organization.Spec.Owners...,
 	) {
@@ -373,8 +373,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 				return true, nil
 			}
 		default:
-			klog.Warning("unknown subject kind:" + sub.Kind + ", in organization " + organization.Name + " members, skipping")
-			continue
+			return false, fmt.Errorf("unknown subject's kind: %s, %v in organization %s", sub.Kind, sub, organization.Name)
 		}
 	}
 	return false, err
