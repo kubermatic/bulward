@@ -19,7 +19,6 @@ package test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,6 +39,7 @@ import (
 
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	"github.com/kubermatic/bulward/test/events"
 )
 
 func init() {
@@ -61,10 +60,7 @@ func TestAPIServerOrganization(t *testing.T) {
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
 	require.NoError(t, err)
 	dcl, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return
-	}
-
+	require.NoError(t, err)
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -88,21 +84,12 @@ func TestAPIServerOrganization(t *testing.T) {
 		FieldSelector: "metadata.name=test",
 	})
 	require.NoError(t, err)
-	t.Cleanup(wi.Stop)
+	eventTracer := events.NewTracer(wi, events.IsObjectName("test"))
+	t.Cleanup(eventTracer.TestCleanupFunc(t))
 
 	t.Log("create")
 	require.NoError(t, cl.Create(ctx, org))
-	for ev := range wi.ResultChan() {
-		if ev.Type == watch.Added {
-			obj := &apiserverv1alpha1.Organization{}
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if assert.Equal(t, "test", obj.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
-				assert.Equal(t, description, obj.Spec.Metadata.Description)
-				t.Log("watch -- created")
-				break
-			}
-		}
-	}
+	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Added)))
 
 	t.Log("get")
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: org.Name}, org))
@@ -117,19 +104,7 @@ func TestAPIServerOrganization(t *testing.T) {
 		}
 	}
 
-modfor:
-	for {
-		select {
-		case ev := <-wi.ResultChan():
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, org, nil))
-			if assert.Equal(t, "test", org.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
-				t.Log("watch -- modified")
-			}
-		case <-time.After(time.Second):
-			break modfor
-		}
-	}
-
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 	assert.Equal(t, description, org.Spec.Metadata.Description, "description")
 	assert.NotEqual(t, 0, org.Status.ObservedGeneration, "observed generation should be propagated")
 	if assert.NotEmpty(t, org.Status.Namespace, "namespace is empty") {
@@ -141,6 +116,7 @@ modfor:
 		org.Labels = map[string]string{"aa": "bb"}
 		return nil
 	}))
+	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Modified)))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
@@ -148,17 +124,7 @@ modfor:
 
 	t.Log("delete")
 	assert.NoError(t, cl.Delete(ctx, org))
-
-	for ev := range wi.ResultChan() {
-		if ev.Type == watch.Deleted {
-			obj := &apiserverv1alpha1.Organization{}
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if assert.Equal(t, "test", obj.Name) {
-				t.Log("watch -- deleted")
-				break
-			}
-		}
-	}
+	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Deleted)))
 }
 
 type TestVisibleFilteringTestCase struct {
@@ -167,7 +133,7 @@ type TestVisibleFilteringTestCase struct {
 	Imp     rest.ImpersonationConfig
 	Org     *apiserverv1alpha1.Organization
 	Client  *testutil.RecordingClient
-	wi      watch.Interface
+	wi      *events.Tracer
 }
 
 func TestVisibleFiltering(t *testing.T) {
@@ -222,23 +188,25 @@ func TestVisibleFiltering(t *testing.T) {
 			},
 		},
 	}
+	t.Log("ensuring cluster RBAC")
+	ensureClusterRBAC(t, ctx, cl, testCase)
 
 	t.Log("creating orgs")
 	for _, tc := range testCase {
 		cfg, err := ctrl.GetConfig()
 		require.NoError(t, err)
 		cfg.Impersonate = tc.Imp
+		cfg.UserAgent = t.Name() + "/" + tc.Name
 		tc.Client = testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 		t.Cleanup(tc.Client.CleanUpFunc(ctx))
-		//dcl, err := dynamic.NewForConfig(cfg)
-		//require.NoError(t, err)
-		//wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
-		//	LabelSelector: "test-name=" + t.Name(),
-		//})
-		//require.NoError(t, err)
-		//t.Cleanup(wi.Stop)
-		//tc.wi = wi
-
+		dcl, err := dynamic.NewForConfig(cfg)
+		require.NoError(t, err)
+		wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+			LabelSelector: "test-name=" + t.Name(),
+		})
+		require.NoError(t, err)
+		tc.wi = events.NewTracer(wi, events.IsObjectName("test-"+tc.Name))
+		t.Cleanup(tc.wi.TestCleanupFunc(t))
 		tc.Org = &apiserverv1alpha1.Organization{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-" + tc.Name,
@@ -255,10 +223,23 @@ func TestVisibleFiltering(t *testing.T) {
 			},
 		}
 		require.NoError(t, cl.Create(ctx, tc.Org))
+		//assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Added)))
 		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
+		rb := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb",
+				Namespace: tc.Org.Status.Namespace.Name,
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     "Role",
+				Name:     "test",
+			},
+			Subjects: []rbacv1.Subject{tc.Subject},
+		}
+		require.NoError(t, cl.Create(ctx, rb))
+		assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Modified)))
 	}
-
-	ensureRBAC(t, ctx, cl, testCase)
 
 	t.Log("waiting for orgs member status updates")
 	for _, tc := range testCase {
@@ -298,28 +279,12 @@ func TestVisibleFiltering(t *testing.T) {
 				return nil
 			}), "update")
 			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
+			assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Deleted)))
 		})
 	}
 }
 
-func ensureRBAC(t *testing.T, ctx context.Context, cl *testutil.RecordingClient, testCase []*TestVisibleFilteringTestCase) {
-	t.Log("creating rolebindings in the orgs")
-	for _, tc := range testCase {
-		rb := &rbacv1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rb",
-				Namespace: tc.Org.Status.Namespace.Name,
-			},
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     "Role",
-				Name:     "test",
-			},
-			Subjects: []rbacv1.Subject{tc.Subject},
-		}
-		require.NoError(t, cl.Create(ctx, rb))
-	}
-
+func ensureClusterRBAC(t *testing.T, ctx context.Context, cl *testutil.RecordingClient, testCase []*TestVisibleFilteringTestCase) {
 	t.Log("creating necessary cluster roles/rolebinding")
 	crole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
