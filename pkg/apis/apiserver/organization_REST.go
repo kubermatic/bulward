@@ -181,10 +181,18 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
+	org := obj.(*Organization)
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(obj.(*Organization), o.scheme)
+	visible, err := o.isVisible(ctx, org)
+	if err != nil {
+		return nil, err
+	}
+	if !visible {
+		return nil, apierrors.NewBadRequest("cannot create organization you're not the owner of")
+	}
+	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(org, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +230,9 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 	if preconditions != nil && preconditions.UID != nil && oldObj.UID != *preconditions.UID {
 		return nil, false, fmt.Errorf("UID differs, precondition UID: %s, found %s", *preconditions.UID, oldObj.UID)
 	}
-
+	if err := createValidation(ctx, oldObj); err != nil {
+		return nil, false, err
+	}
 	visible, err := o.isVisible(ctx, oldObj)
 	if err != nil {
 		return nil, false, err

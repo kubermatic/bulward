@@ -145,6 +145,14 @@ func TestVisibleFiltering(t *testing.T) {
 	cfg.UserAgent = t.Name()
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
+	dcl, err := dynamic.NewForConfig(cfg)
+	require.NoError(t, err)
+	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+		LabelSelector: "test-name=" + t.Name(),
+	})
+	require.NoError(t, err)
+	globalEventTraced := events.NewTracer(wi)
+	t.Cleanup(globalEventTraced.TestCleanupFunc(t))
 
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -222,8 +230,12 @@ func TestVisibleFiltering(t *testing.T) {
 				Owners: []rbacv1.Subject{owner},
 			},
 		}
+		require.Error(t, tc.Client.Create(ctx, tc.Org), "I cannot create an organization which I'm not owner of")
 		require.NoError(t, cl.Create(ctx, tc.Org))
-		//assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Added)))
+		assert.NoError(t, globalEventTraced.TryUntil(ctx, events.AllOf(
+			events.IsEventType(watch.Added),
+			events.IsObjectName(tc.Org.Name),
+		)))
 		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
 		rb := &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{

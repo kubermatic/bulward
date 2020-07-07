@@ -44,3 +44,39 @@ func Tautology() Predicate {
 		return true, nil
 	}
 }
+
+func Fallacy() Predicate {
+	return func(event watch.Event) (bool, error) {
+		return false, nil
+	}
+}
+
+func AllOf(predicates ...Predicate) Predicate {
+	return func(event watch.Event) (bool, error) {
+		for _, p := range predicates {
+			ok, err := p(event)
+			if err != nil {
+				return false, err
+			}
+			if !ok {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+}
+
+func AnyOf(predicates ...Predicate) Predicate {
+	return func(event watch.Event) (bool, error) {
+		for _, p := range predicates {
+			ok, err := p(event)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+}
