@@ -1,4 +1,4 @@
-apiVersion: storage.bulward.io/v1alpha1
+apiVersion: apiserver.bulward.io/v1alpha1
 kind: Organization
 metadata:
   name: organization-a
