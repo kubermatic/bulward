@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 func chainConversion(scheme *runtime.Scheme, initObj runtime.Object, objs ...runtime.Object) (runtime.Object, error) {
@@ -39,7 +39,7 @@ func chainConversion(scheme *runtime.Scheme, initObj runtime.Object, objs ...run
 
 func ConvertToUnstructuredCoreV1Alpha1Organization(organization *Organization, scheme *runtime.Scheme) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
-	if _, err := chainConversion(scheme, organization, &corev1alpha1.Organization{}, u); err != nil {
+	if _, err := chainConversion(scheme, organization, &storagev1alpha1.Organization{}, u); err != nil {
 		return nil, err
 	}
 	return u, nil
@@ -50,12 +50,12 @@ func ConvertFromUnstructuredCoreV1Alpha1(internalOrgv1alpha1 *unstructured.Unstr
 	if err != nil {
 		return nil, err
 	}
-	expectedGVK := corev1alpha1.GroupVersion.WithKind("Organization")
+	expectedGVK := storagev1alpha1.GroupVersion.WithKind("Organization")
 	if gvk != expectedGVK {
 		return nil, fmt.Errorf("wrong GVK, expected %v, found %v", expectedGVK, gvk)
 	}
 	org := &Organization{}
-	if _, err := chainConversion(scheme, internalOrgv1alpha1, &corev1alpha1.Organization{}, org); err != nil {
+	if _, err := chainConversion(scheme, internalOrgv1alpha1, &storagev1alpha1.Organization{}, org); err != nil {
 		return nil, err
 	}
 	return org, nil

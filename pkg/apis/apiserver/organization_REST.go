@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 const (
@@ -90,7 +90,7 @@ func (o *OrganizationREST) InjectDynamicClient(dynamic dynamic.Interface) error 
 	if o.dynamicRI != nil {
 		return fmt.Errorf("dynamicRI already injected")
 	}
-	o.dynamicRI = dynamic.Resource(corev1alpha1.GroupVersion.WithResource(internalOrganizationResource))
+	o.dynamicRI = dynamic.Resource(storagev1alpha1.GroupVersion.WithResource(internalOrganizationResource))
 	return nil
 }
 

@@ -44,6 +44,7 @@ CRD_VERSION="v1"
 # -------
 # CRDs
 $CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/core/..." output:crd:artifacts:config=config/manager/crd/bases
+$CONTROLLER_GEN crd:crdVersions=${CRD_VERSION} paths="./pkg/apis/storage/..." output:crd:artifacts:config=config/manager/crd/bases
 # Webhooks
 $CONTROLLER_GEN webhook paths="./pkg/manager/internal/webhooks/..." output:webhook:artifacts:config=config/manager/webhook
 # RBAC
@@ -57,7 +58,7 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rb
 export GOROOT=$(go env GOROOT)
 # We don't want to generate zz_generated.defaults.go for core api group.
 defaulter-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver --go-header-file ./hack/boilerplate/boilerplate.go.txt
-openapi-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 --input-dirs github.com/kubermatic/bulward/pkg/apis/core/v1alpha1 --go-header-file ./hack/boilerplate/boilerplate.go.txt -i k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1 --output-package github.com/kubermatic/bulward/pkg/openapi
+openapi-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 --input-dirs github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1 --go-header-file ./hack/boilerplate/boilerplate.go.txt -i k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1 --output-package github.com/kubermatic/bulward/pkg/openapi
 $APISERVER_BOOT build generated  --generator conversion
 rm -Rf ./plugin
 goimports -local github.com/kubermatic -w .

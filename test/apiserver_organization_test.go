@@ -39,6 +39,7 @@ import (
 
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 	"github.com/kubermatic/bulward/test/events"
 )
 
@@ -71,8 +72,8 @@ func TestAPIServerOrganization(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
 		},
-		Spec: corev1alpha1.OrganizationSpec{
-			Metadata: &corev1alpha1.OrganizationMetadata{
+		Spec: storagev1alpha1.OrganizationSpec{
+			Metadata: &storagev1alpha1.OrganizationMetadata{
 				DisplayName: "test",
 				Description: description,
 			},
@@ -222,8 +223,8 @@ func TestVisibleFiltering(t *testing.T) {
 					"test-name": t.Name(),
 				},
 			},
-			Spec: corev1alpha1.OrganizationSpec{
-				Metadata: &corev1alpha1.OrganizationMetadata{
+			Spec: storagev1alpha1.OrganizationSpec{
+				Metadata: &storagev1alpha1.OrganizationMetadata{
 					DisplayName: "test",
 					Description: "desc",
 				},

@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 func init() {
@@ -29,21 +29,21 @@ func init() {
 }
 
 func Corev1alpha1RegisterConversion(scheme *runtime.Scheme) error {
-	if err := scheme.AddConversionFunc((*Organization)(nil), (*corev1alpha1.Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
+	if err := scheme.AddConversionFunc((*Organization)(nil), (*storagev1alpha1.Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		in := a.(*Organization)
-		out := b.(*corev1alpha1.Organization)
+		out := b.(*storagev1alpha1.Organization)
 		if err := Convert_apiserver_Organization_To_v1alpha1_Organization(in, out, scope); err != nil {
 			return err
 		}
 		for i := range out.ManagedFields {
-			out.ManagedFields[i].APIVersion = corev1alpha1.GroupVersion.String()
+			out.ManagedFields[i].APIVersion = storagev1alpha1.GroupVersion.String()
 		}
 		return nil
 	}); err != nil {
 		return err
 	}
-	if err := scheme.AddConversionFunc((*corev1alpha1.Organization)(nil), (*Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		in := a.(*corev1alpha1.Organization)
+	if err := scheme.AddConversionFunc((*storagev1alpha1.Organization)(nil), (*Organization)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		in := a.(*storagev1alpha1.Organization)
 		out := b.(*Organization)
 		if err := Convert_v1alpha1_Organization_To_apiserver_Organization(in, out, scope); err != nil {
 			return err

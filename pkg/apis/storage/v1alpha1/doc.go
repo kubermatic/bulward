@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// +k8s:deepcopy-gen=package,register
-// +groupName=apiserver.bulward.io
-// +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1
+// Api versions allow the api contract for a resource to be changed while keeping
+// backward compatibility by support multiple concurrent versions
+// of the same resource
 
-// Package apiserver is the internal version of the API.
-package apiserver
+// +k8s:openapi-gen=true
+// +groupName=storage.bulward.io
+package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
