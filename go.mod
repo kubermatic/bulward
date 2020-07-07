@@ -19,10 +19,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 
-replace sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.12
-
-replace sigs.k8s.io/kubebuilder => sigs.k8s.io/kubebuilder v1.0.8
-
 replace github.com/markbates/inflect => github.com/markbates/inflect v1.0.4
 
 replace github.com/kubernetes-incubator/reference-docs => github.com/kubernetes-sigs/reference-docs v0.0.0-20170929004150-fcf65347b256
