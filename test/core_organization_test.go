@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	"github.com/kubermatic/utils/pkg/testutil"
@@ -89,4 +90,40 @@ func TestCoreOrganization(t *testing.T) {
 		}
 		return false, nil
 	}))
+
+	t.Log("Organization Owner has permission to create RoleBinding")
+	cfg.Impersonate = rest.ImpersonationConfig{
+		UserName: owner.Name,
+	}
+	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	t.Cleanup(cl.CleanUpFunc(ctx))
+	rbacSubject := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "User1",
+	}
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "user1-rb",
+			Namespace: org.Status.Namespace.Name,
+		},
+		Subjects: []rbacv1.Subject{rbacSubject},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     rbacTemplate.Name,
+		},
+	}
+	require.NoError(t, ownerClient.Create(ctx, rb))
+	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
+		if len(org.Status.Members) == 2 {
+			assert.Contains(t, org.Status.Members, rbacSubject)
+			return true, nil
+		}
+		return false, nil
+	}))
+	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, ownerClient, rb))
+	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
+		return len(org.Status.Members) == 1, nil
+	}), "organization owner can not remove organization member")
 }
