@@ -74,7 +74,7 @@ func ConvertToUnstructuredCoreV1Alpha1OrganizationList(organizations *Organizati
 		}
 		sol.Items = append(sol.Items, *org)
 	}
-	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", corev1alpha1.GroupVersion.Group, corev1alpha1.GroupVersion.Version, internalOrganizationResource))
+	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, internalOrganizationResource))
 	sol.SetResourceVersion(accesssor.GetResourceVersion())
 	sol.SetContinue(accesssor.GetContinue())
 	sol.SetRemainingItemCount(accesssor.GetRemainingItemCount())
