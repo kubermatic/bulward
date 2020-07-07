@@ -33,21 +33,9 @@ func IsObjectName(name string) Predicate {
 	}
 }
 
-func IsEventType(eventType watch.EventType) Predicate {
+func IsType(eventType watch.EventType) Predicate {
 	return func(event watch.Event) (bool, error) {
 		return event.Type == eventType, nil
-	}
-}
-
-func Tautology() Predicate {
-	return func(event watch.Event) (bool, error) {
-		return true, nil
-	}
-}
-
-func Fallacy() Predicate {
-	return func(event watch.Event) (bool, error) {
-		return false, nil
 	}
 }
 

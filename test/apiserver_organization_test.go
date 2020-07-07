@@ -89,7 +89,7 @@ func TestAPIServerOrganization(t *testing.T) {
 
 	t.Log("create")
 	require.NoError(t, cl.Create(ctx, org))
-	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Added)))
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Added)))
 
 	t.Log("get")
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: org.Name}, org))
@@ -116,7 +116,7 @@ func TestAPIServerOrganization(t *testing.T) {
 		org.Labels = map[string]string{"aa": "bb"}
 		return nil
 	}))
-	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Modified)))
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Modified)))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
@@ -124,16 +124,16 @@ func TestAPIServerOrganization(t *testing.T) {
 
 	t.Log("delete")
 	assert.NoError(t, cl.Delete(ctx, org))
-	require.NoError(t, eventTracer.TryUntil(ctx, events.IsEventType(watch.Deleted)))
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
 }
 
 type TestVisibleFilteringTestCase struct {
-	Name    string
-	Subject rbacv1.Subject
-	Imp     rest.ImpersonationConfig
-	Org     *apiserverv1alpha1.Organization
-	Client  *testutil.RecordingClient
-	wi      *events.Tracer
+	Name                string
+	Subject             rbacv1.Subject
+	ImpersonationConfig rest.ImpersonationConfig
+	Org                 *apiserverv1alpha1.Organization
+	Client              *testutil.RecordingClient
+	tracer              *events.Tracer
 }
 
 func TestVisibleFiltering(t *testing.T) {
@@ -167,7 +167,7 @@ func TestVisibleFiltering(t *testing.T) {
 				APIGroup: rbacv1.GroupName,
 				Name:     "user",
 			},
-			Imp: rest.ImpersonationConfig{
+			ImpersonationConfig: rest.ImpersonationConfig{
 				UserName: "user",
 			},
 		},
@@ -178,7 +178,7 @@ func TestVisibleFiltering(t *testing.T) {
 				APIGroup: rbacv1.GroupName,
 				Name:     "group",
 			},
-			Imp: rest.ImpersonationConfig{
+			ImpersonationConfig: rest.ImpersonationConfig{
 				UserName: "lala",
 				// without "system:authenticated" things are breaking...cannot RESTMapper doesn't function
 				Groups: []string{"system:authenticated", "group"},
@@ -191,7 +191,7 @@ func TestVisibleFiltering(t *testing.T) {
 				Name:      "default",
 				Namespace: "default",
 			},
-			Imp: rest.ImpersonationConfig{
+			ImpersonationConfig: rest.ImpersonationConfig{
 				UserName: "system:serviceaccount:default:default",
 			},
 		},
@@ -203,7 +203,7 @@ func TestVisibleFiltering(t *testing.T) {
 	for _, tc := range testCase {
 		cfg, err := ctrl.GetConfig()
 		require.NoError(t, err)
-		cfg.Impersonate = tc.Imp
+		cfg.Impersonate = tc.ImpersonationConfig
 		cfg.UserAgent = t.Name() + "/" + tc.Name
 		tc.Client = testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 		t.Cleanup(tc.Client.CleanUpFunc(ctx))
@@ -213,8 +213,8 @@ func TestVisibleFiltering(t *testing.T) {
 			LabelSelector: "test-name=" + t.Name(),
 		})
 		require.NoError(t, err)
-		tc.wi = events.NewTracer(wi, events.IsObjectName("test-"+tc.Name))
-		t.Cleanup(tc.wi.TestCleanupFunc(t))
+		tc.tracer = events.NewTracer(wi, events.IsObjectName("test-"+tc.Name))
+		t.Cleanup(tc.tracer.TestCleanupFunc(t))
 		tc.Org = &apiserverv1alpha1.Organization{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-" + tc.Name,
@@ -232,8 +232,8 @@ func TestVisibleFiltering(t *testing.T) {
 		}
 		require.Error(t, tc.Client.Create(ctx, tc.Org), "I cannot create an organization which I'm not owner of")
 		require.NoError(t, cl.Create(ctx, tc.Org))
-		assert.NoError(t, globalEventTraced.TryUntil(ctx, events.AllOf(
-			events.IsEventType(watch.Added),
+		assert.NoError(t, globalEventTraced.WaitUntil(ctx, events.AllOf(
+			events.IsType(watch.Added),
 			events.IsObjectName(tc.Org.Name),
 		)))
 		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
@@ -250,7 +250,7 @@ func TestVisibleFiltering(t *testing.T) {
 			Subjects: []rbacv1.Subject{tc.Subject},
 		}
 		require.NoError(t, cl.Create(ctx, rb))
-		assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Modified)))
+		assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Modified)))
 	}
 
 	t.Log("waiting for orgs member status updates")
@@ -291,7 +291,7 @@ func TestVisibleFiltering(t *testing.T) {
 				return nil
 			}), "update")
 			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
-			assert.NoError(t, tc.wi.TryUntil(ctx, events.IsEventType(watch.Deleted)))
+			assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
 		})
 	}
 }

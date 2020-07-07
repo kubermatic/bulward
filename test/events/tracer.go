@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/watch"
@@ -39,7 +38,7 @@ type Tracer struct {
 	invariants []Predicate
 }
 
-func (wt *Tracer) TryUntil(ctx context.Context, predicate Predicate) error {
+func (wt *Tracer) WaitUntil(ctx context.Context, predicate Predicate) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -62,23 +61,6 @@ func (wt *Tracer) TryUntil(ctx context.Context, predicate Predicate) error {
 	}
 }
 
-func (wt *Tracer) ConsumeUntilTimeout(ctx context.Context, duration time.Duration) error {
-	t := time.NewTicker(duration)
-	defer t.Stop()
-	for {
-		select {
-		case <-t.C:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		case _, ok := <-wt.watch.ResultChan():
-			if !ok {
-				return nil
-			}
-		}
-	}
-
-}
 func (wt *Tracer) checkInvariants(ev watch.Event) error {
 	for _, inv := range wt.invariants {
 		ok, err := inv(ev)
