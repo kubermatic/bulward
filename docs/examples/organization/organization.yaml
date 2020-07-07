@@ -1,7 +1,0 @@
-note: Organization Example
-sample: |
-  apiVersion: apiserver.bulward.io/v1alpha1
-  kind: Organization
-  metadata:
-    name: organization-example
-  spec:
