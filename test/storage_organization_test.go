@@ -26,18 +26,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	"github.com/kubermatic/utils/pkg/testutil"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
-	utilruntime.Must(scheme.AddToScheme(testScheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(testScheme))
+	utilruntime.Must(storagev1alpha1.AddToScheme(testScheme))
 }
 
 func TestCoreOrganization(t *testing.T) {
@@ -54,12 +56,12 @@ func TestCoreOrganization(t *testing.T) {
 		Name:     "Owner1",
 	}
 
-	org := &corev1alpha1.Organization{
+	org := &storagev1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "core-organization-test",
 		},
-		Spec: corev1alpha1.OrganizationSpec{
-			Metadata: &corev1alpha1.OrganizationMetadata{
+		Spec: storagev1alpha1.OrganizationSpec{
+			Metadata: &storagev1alpha1.OrganizationMetadata{
 				DisplayName: "berlin",
 				Description: "a humble organization of German capital",
 			},

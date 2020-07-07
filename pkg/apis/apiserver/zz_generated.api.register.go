@@ -29,7 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 var (
@@ -86,8 +86,8 @@ func Resource(resource string) schema.GroupResource {
 type Organization struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
-	Spec   corev1alpha1.OrganizationSpec
-	Status corev1alpha1.OrganizationStatus
+	Spec   storagev1alpha1.OrganizationSpec
+	Status storagev1alpha1.OrganizationStatus
 }
 
 //
@@ -112,7 +112,7 @@ type OrganizationList struct {
 }
 
 func (Organization) NewStatus() interface{} {
-	return corev1alpha1.OrganizationStatus{}
+	return storagev1alpha1.OrganizationStatus{}
 }
 
 func (pc *Organization) GetStatus() interface{} {
@@ -120,7 +120,7 @@ func (pc *Organization) GetStatus() interface{} {
 }
 
 func (pc *Organization) SetStatus(s interface{}) {
-	pc.Status = s.(corev1alpha1.OrganizationStatus)
+	pc.Status = s.(storagev1alpha1.OrganizationStatus)
 }
 
 func (pc *Organization) GetSpec() interface{} {
@@ -128,7 +128,7 @@ func (pc *Organization) GetSpec() interface{} {
 }
 
 func (pc *Organization) SetSpec(s interface{}) {
-	pc.Spec = s.(corev1alpha1.OrganizationSpec)
+	pc.Spec = s.(storagev1alpha1.OrganizationSpec)
 }
 
 func (pc *Organization) GetObjectMeta() *metav1.ObjectMeta {

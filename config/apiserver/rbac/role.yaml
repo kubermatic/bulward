@@ -30,7 +30,7 @@ rules:
   verbs:
   - create
 - apiGroups:
-  - bulward.io
+  - storage.bulward.io
   resources:
   - organizations
   verbs:

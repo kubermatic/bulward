@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 // +genclient
@@ -32,6 +32,6 @@ type Organization struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   corev1alpha1.OrganizationSpec   `json:"spec,omitempty"`
-	Status corev1alpha1.OrganizationStatus `json:"status,omitempty"`
+	Spec   storagev1alpha1.OrganizationSpec   `json:"spec,omitempty"`
+	Status storagev1alpha1.OrganizationStatus `json:"status,omitempty"`
 }
