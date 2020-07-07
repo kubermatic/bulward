@@ -164,7 +164,7 @@ func TestVisibleFiltering(t *testing.T) {
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
 	cfg.UserAgent = t.Name()
-	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStragety))
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	owner := rbacv1.Subject{

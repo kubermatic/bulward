@@ -24,20 +24,18 @@ import (
 
 	"github.com/kubermatic/utils/pkg/testutil"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 )
 
 var (
-	cleanUpStragety = string(testutil.CleanupOnSuccess)
+	cleanUpStrategy = string(testutil.CleanupOnSuccess)
 	testScheme      = scheme.Scheme
 )
 
 func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
-	utilruntime.Must(apiserver.AddToScheme(testScheme))
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 	utilruntime.Must(scheme.AddToScheme(testScheme))
-	flag.StringVar(&cleanUpStragety, "clean-up-strategy", cleanUpStragety, "clean up strategy")
+	flag.StringVar(&cleanUpStrategy, "clean-up-strategy", cleanUpStrategy, "clean up strategy")
 }
