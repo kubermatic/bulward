@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 )
 
 // OrganizationRoleTemplateReconciler reconciles a Organization object
@@ -44,7 +45,7 @@ type OrganizationRoleTemplateReconciler struct {
 
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=apiserver.bulward.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete;bind
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
@@ -64,7 +65,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	organizations := &corev1alpha1.OrganizationList{}
+	organizations := &storagev1alpha1.OrganizationList{}
 	if err := r.Client.List(ctx, organizations); err != nil {
 		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
 	}
@@ -77,7 +78,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			}
 			targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
 				Kind:               organization.Kind,
-				APIGroup:           "bulward.io",
+				APIGroup:           "storage.bulward.io",
 				Name:               organization.Name,
 				ObservedGeneration: organization.Status.ObservedGeneration,
 			})
@@ -112,9 +113,9 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 func (r *OrganizationRoleTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.OrganizationRoleTemplate{}).
-		Watches(&source.Kind{Type: &corev1alpha1.Organization{}}, &handler.EnqueueRequestsFromMapFunc{
+		Watches(&source.Kind{Type: &storagev1alpha1.Organization{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) (out []ctrl.Request) {
-				organization := mapObject.Object.(*corev1alpha1.Organization)
+				organization := mapObject.Object.(*storagev1alpha1.Organization)
 				if !organization.IsReady() {
 					return
 				}
@@ -157,7 +158,7 @@ func (r *OrganizationRoleTemplateReconciler) handleDeletion(ctx context.Context,
 	return nil
 }
 
-func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *corev1alpha1.Organization) error {
+func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization) error {
 	// Reconcile Role.
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -198,9 +199,7 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRole(ctx context.Context, 
 			organizationRoleTemplate, role, r.Scheme); err != nil {
 			return fmt.Errorf("set controller reference for Role: %w", err)
 		}
-		if !reflect.DeepEqual(role.Rules, desiredRole.Rules) {
-			role.Rules = desiredRole.Rules
-		}
+		role.Rules = desiredRole.Rules
 		return nil
 	}); err != nil {
 		return fmt.Errorf("creating or updating Role: %w", err)
@@ -215,9 +214,7 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRoleBinding(ctx context.Co
 			organizationRoleTemplate, roleBinding, r.Scheme); err != nil {
 			return fmt.Errorf("set controller reference for RoleBinding: %w", err)
 		}
-		if !reflect.DeepEqual(roleBinding.Subjects, desiredRoleBinding.Subjects) {
-			roleBinding.Subjects = desiredRoleBinding.Subjects
-		}
+		roleBinding.Subjects = desiredRoleBinding.Subjects
 		return nil
 	}); err != nil {
 		return fmt.Errorf("creating or updating RoleBinding: %w", err)

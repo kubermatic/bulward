@@ -49,15 +49,6 @@ rules:
   - patch
   - update
 - apiGroups:
-  - bulward.io
-  resources:
-  - organizations
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - rolebindings
