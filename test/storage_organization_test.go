@@ -47,7 +47,7 @@ func TestCoreOrganization(t *testing.T) {
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()
 	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	owner := rbacv1.Subject{
@@ -97,7 +97,7 @@ func TestCoreOrganization(t *testing.T) {
 	cfg.Impersonate = rest.ImpersonationConfig{
 		UserName: owner.Name,
 	}
-	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 	rbacSubject := rbacv1.Subject{
 		Kind:     "User",
