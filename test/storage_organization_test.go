@@ -98,7 +98,7 @@ func TestCoreOrganization(t *testing.T) {
 		UserName: owner.Name,
 	}
 	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
-	t.Cleanup(cl.CleanUpFunc(ctx))
+	t.Cleanup(ownerClient.CleanUpFunc(ctx))
 	rbacSubject := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",

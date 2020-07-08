@@ -86,10 +86,10 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		}
 	}
 
-	var isChanged bool
+	var changed bool
 	if !reflect.DeepEqual(targets, organizationRoleTemplate.Status.Targets) {
 		organizationRoleTemplate.Status.Targets = targets
-		isChanged = true
+		changed = true
 	}
 	if !organizationRoleTemplate.IsReady() {
 		// Update OrganizationRoleTemplate Status
@@ -100,10 +100,10 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			Reason:  "SetupComplete",
 			Message: "OrganizationRoleTemplate setup is complete.",
 		})
-		isChanged = true
+		changed = true
 	}
 
-	if isChanged {
+	if changed {
 		if err := r.Status().Update(ctx, organizationRoleTemplate); err != nil {
 			return ctrl.Result{}, fmt.Errorf("updating OrganizationRoleTemplate status: %w", err)
 		}
