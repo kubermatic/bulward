@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
 	"github.com/kubermatic/utils/pkg/testutil"
@@ -47,7 +47,7 @@ func TestCoreOrganization(t *testing.T) {
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()
 	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	owner := rbacv1.Subject{
@@ -72,23 +72,38 @@ func TestCoreOrganization(t *testing.T) {
 	require.NoError(t, cl.Create(ctx, org))
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 
-	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{}
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: templates.ProjectAdminOrganizationRoleTemplateName,
-	}, projectTemplate))
+	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: templates.ProjectAdminOrganizationRoleTemplateName,
+		},
+	}
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, projectTemplate))
+	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: templates.RBACAdminOrganizationRoleTemplateName,
+		},
+	}
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, rbacTemplate))
+	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
+		if len(org.Status.Members) > 0 {
+			assert.Len(t, org.Status.Members, 1)
+			assert.Equal(t, org.Status.Members[0].Name, owner.Name)
+			return true, nil
+		}
+		return false, nil
+	}))
 
-	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{}
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{
-		Name: templates.RBACAdminOrganizationRoleTemplateName,
-	}, rbacTemplate))
-
-	assert.Empty(t, org.Status.Members)
+	t.Log("Organization Owner has permission to create RoleBinding")
+	cfg.Impersonate = rest.ImpersonationConfig{
+		UserName: owner.Name,
+	}
+	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
+	t.Cleanup(ownerClient.CleanUpFunc(ctx))
 	rbacSubject := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",
 		Name:     "User1",
 	}
-
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "user1-rb",
@@ -98,19 +113,19 @@ func TestCoreOrganization(t *testing.T) {
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
-			Name:     "dummy",
+			Name:     rbacTemplate.Name,
 		},
 	}
-	require.NoError(t, cl.Create(ctx, rb))
+	require.NoError(t, ownerClient.Create(ctx, rb))
 	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		if len(org.Status.Members) > 0 {
-			assert.Equal(t, []rbacv1.Subject{rbacSubject}, org.Status.Members)
+		if len(org.Status.Members) == 2 {
+			assert.Contains(t, org.Status.Members, rbacSubject)
 			return true, nil
 		}
 		return false, nil
 	}))
-	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, rb))
+	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, ownerClient, rb))
 	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		return len(org.Status.Members) == 0, nil
-	}), "organization never reached 0 memebers")
+		return len(org.Status.Members) == 1, nil
+	}), "organization owner can not remove organization member")
 }

@@ -81,7 +81,8 @@ e2e-test: deploy
 # Test Runners
 # ------------
 test:
-	CGO_ENABLED=1 go test -race -v ./...
+	CGO_ENABLED=1 go test -race -v ./pkg/...
+.PHONY: test
 
 lint: pre-commit
 	@hack/validate-directory-clean.sh

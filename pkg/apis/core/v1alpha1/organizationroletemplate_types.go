@@ -29,7 +29,7 @@ type OrganizationRoleTemplateSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	Scopes []RoleTemplateScope `json:"scopes"`
 	// BindTo defines the member types of the Organization that this OrganizationRoleTemplate will be bound to.
-	BindTo []BindToType `json:"bindTo,omitempty"`
+	BindTo []BindingType `json:"bindTo,omitempty"`
 	// Rules defnies the Role that this OrganizationRoleTemplate refers to.
 	Rules []rbacv1.PolicyRule `json:"rules"`
 }
@@ -43,11 +43,11 @@ const (
 )
 
 // +kubebuilder:validation:Enum=Owners;Everyone
-type BindToType string
+type BindingType string
 
 const (
-	BindToOwners   BindToType = "Owners"
-	BindToEveryone BindToType = "Everyone"
+	BindToOwners   BindingType = "Owners"
+	BindToEveryone BindingType = "Everyone"
 )
 
 // OrganizationRoleTemplateMetadata contains the metadata of the OrganizationRoleTemplate.
@@ -72,6 +72,21 @@ type OrganizationRoleTemplateStatus struct {
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
 	Phase OrganizationRoleTemplatePhaseType `json:"phase,omitempty"`
+	// Targets holds different targets(Organization, Project) that this OrganizationRoleTemplate targets to.
+	Targets []OrganizationRoleTemplateTarget `json:"targets,omitempty"`
+}
+
+type OrganizationRoleTemplateTarget struct {
+	// Kind of target being referenced. Available values can be "Organization", "Project".
+	// +kubebuilder:validation:Enum=Organization;Project
+	Kind string `json:"kind"`
+	// APIGroup holds the API group of the referenced target, default "bulward.io".
+	// +kubebuilder:default=bulward.io
+	APIGroup string `json:"apiGroup,omitempty"`
+	// Name of the target being referenced.
+	Name string `json:"name"`
+	// ObservedGeneration is the most recent generation observed for this Target by the controller.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
 // OrganizationRoleTemplatePhaseType represents all conditions as a single string for printing by using kubectl commands.
@@ -206,6 +221,24 @@ func (s *OrganizationRoleTemplate) IsReady() bool {
 	for _, condition := range s.Status.Conditions {
 		if condition.Type == OrganizationRoleTemplateReady &&
 			condition.Status == ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *OrganizationRoleTemplate) HasScope(organizationRoleScope RoleTemplateScope) bool {
+	for _, scope := range s.Spec.Scopes {
+		if scope == organizationRoleScope {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *OrganizationRoleTemplate) HasBinding(bindTo BindingType) bool {
+	for _, b := range s.Spec.BindTo {
+		if b == bindTo {
 			return true
 		}
 	}

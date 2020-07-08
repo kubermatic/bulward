@@ -58,7 +58,7 @@ func TestAPIServerOrganization(t *testing.T) {
 	t.Cleanup(cancel)
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	require.NoError(t, err)
 	dcl, err := dynamic.NewForConfig(cfg)
 	require.NoError(t, err)
@@ -231,7 +231,7 @@ func TestVisibleFiltering(t *testing.T) {
 				Owners: []rbacv1.Subject{owner},
 			},
 		}
-		require.Error(t, tc.Client.Create(ctx, tc.Org), "I cannot create an organization which I'm not owner of")
+		require.Error(t, tc.Client.Create(ctx, tc.Org), "creating organization I'm not owner of should be forbidden")
 		require.NoError(t, cl.Create(ctx, tc.Org))
 		assert.NoError(t, globalEventTraced.WaitUntil(ctx, events.AllOf(
 			events.IsType(watch.Added),

@@ -190,6 +190,36 @@ spec:
                   printing the property. This is only for display purpose, for everything
                   else use conditions.
                 type: string
+              targets:
+                description: Targets holds different targets(Organization, Project)
+                  that this OrganizationRoleTemplate targets to.
+                items:
+                  properties:
+                    apiGroup:
+                      default: bulward.io
+                      description: APIGroup holds the API group of the referenced
+                        target, default "bulward.io".
+                      type: string
+                    kind:
+                      description: Kind of target being referenced. Available values
+                        can be "Organization", "Project".
+                      enum:
+                      - Organization
+                      - Project
+                      type: string
+                    name:
+                      description: Name of the target being referenced.
+                      type: string
+                    observedGeneration:
+                      description: ObservedGeneration is the most recent generation
+                        observed for this Target by the controller.
+                      format: int64
+                      type: integer
+                  required:
+                  - kind
+                  - name
+                  type: object
+                type: array
             type: object
         type: object
     served: true
