@@ -36,7 +36,7 @@ import (
 	"github.com/kubermatic/utils/pkg/owner"
 	"github.com/kubermatic/utils/pkg/util"
 
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 	"github.com/kubermatic/bulward/pkg/templates"
 )
 
@@ -51,8 +51,8 @@ type OrganizationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=bulward.io,resources=organizations,verbs=get;list;watch;update
-// +kubebuilder:rbac:groups=bulward.io,resources=organizations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=create
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
@@ -67,7 +67,7 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	ctx := context.Background()
 	log := r.Log.WithValues("Organization", req.NamespacedName)
 
-	organization := &corev1alpha1.Organization{}
+	organization := &storagev1alpha1.Organization{}
 	if err := r.Get(ctx, req.NamespacedName, organization); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -97,9 +97,9 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 	if !organization.IsReady() {
 		organization.Status.ObservedGeneration = organization.Generation
-		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
-			Type:    corev1alpha1.OrganizationReady,
-			Status:  corev1alpha1.ConditionTrue,
+		organization.Status.SetCondition(storagev1alpha1.OrganizationCondition{
+			Type:    storagev1alpha1.OrganizationReady,
+			Status:  storagev1alpha1.ConditionTrue,
 			Reason:  "SetupComplete",
 			Message: "Organization setup is complete.",
 		})
@@ -111,10 +111,10 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 }
 
 func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	enqueuer := owner.EnqueueRequestForOwner(&corev1alpha1.Organization{}, mgr.GetScheme())
+	enqueuer := owner.EnqueueRequestForOwner(&storagev1alpha1.Organization{}, mgr.GetScheme())
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1alpha1.Organization{}).
+		For(&storagev1alpha1.Organization{}).
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
 		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
@@ -128,16 +128,16 @@ func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // handleDeletion handles the deletion of the Organization object:
-func (r *OrganizationReconciler) handleDeletion(ctx context.Context, log logr.Logger, organization *corev1alpha1.Organization) error {
+func (r *OrganizationReconciler) handleDeletion(ctx context.Context, log logr.Logger, organization *storagev1alpha1.Organization) error {
 	// Update the Organization Status to Terminating.
-	readyCondition, _ := organization.Status.GetCondition(corev1alpha1.OrganizationReady)
-	if readyCondition.Status != corev1alpha1.ConditionFalse ||
-		readyCondition.Status == corev1alpha1.ConditionFalse && readyCondition.Reason != corev1alpha1.OrganizationTerminatingReason {
+	readyCondition, _ := organization.Status.GetCondition(storagev1alpha1.OrganizationReady)
+	if readyCondition.Status != storagev1alpha1.ConditionFalse ||
+		readyCondition.Status == storagev1alpha1.ConditionFalse && readyCondition.Reason != storagev1alpha1.OrganizationTerminatingReason {
 		organization.Status.ObservedGeneration = organization.Generation
-		organization.Status.SetCondition(corev1alpha1.OrganizationCondition{
-			Type:    corev1alpha1.OrganizationReady,
-			Status:  corev1alpha1.ConditionFalse,
-			Reason:  corev1alpha1.OrganizationTerminatingReason,
+		organization.Status.SetCondition(storagev1alpha1.OrganizationCondition{
+			Type:    storagev1alpha1.OrganizationReady,
+			Status:  storagev1alpha1.ConditionFalse,
+			Reason:  storagev1alpha1.OrganizationTerminatingReason,
 			Message: "Organization is being terminated",
 		})
 		if err := r.Status().Update(ctx, organization); err != nil {
@@ -159,7 +159,7 @@ func (r *OrganizationReconciler) handleDeletion(ctx context.Context, log logr.Lo
 	return nil
 }
 
-func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log logr.Logger, organization *corev1alpha1.Organization) error {
+func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log logr.Logger, organization *storagev1alpha1.Organization) error {
 	ns := &corev1.Namespace{}
 	ns.Name = organization.Name
 
@@ -168,7 +168,7 @@ func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log log
 	}
 
 	if organization.Status.Namespace == nil {
-		organization.Status.Namespace = &corev1alpha1.ObjectReference{
+		organization.Status.Namespace = &storagev1alpha1.ObjectReference{
 			Name: ns.Name,
 		}
 		if err := r.Status().Update(ctx, organization); err != nil {
@@ -178,7 +178,7 @@ func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log log
 	return nil
 }
 
-func (r *OrganizationReconciler) reconcileMembers(ctx context.Context, log logr.Logger, organization *corev1alpha1.Organization) error {
+func (r *OrganizationReconciler) reconcileMembers(ctx context.Context, log logr.Logger, organization *storagev1alpha1.Organization) error {
 	rbs := &rbacv1.RoleBindingList{}
 	if err := r.List(ctx, rbs, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
 		return fmt.Errorf("list rolebindings: %w", err)

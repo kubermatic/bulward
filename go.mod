@@ -1,6 +1,6 @@
 module github.com/kubermatic/bulward
 
-go 1.13
+go 1.14
 
 require (
 	github.com/go-logr/logr v0.1.0
@@ -18,10 +18,6 @@ require (
 	sigs.k8s.io/apiserver-builder-alpha v1.18.0
 	sigs.k8s.io/controller-runtime v0.6.0
 )
-
-replace sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.12
-
-replace sigs.k8s.io/kubebuilder => sigs.k8s.io/kubebuilder v1.0.8
 
 replace github.com/markbates/inflect => github.com/markbates/inflect v1.0.4
 

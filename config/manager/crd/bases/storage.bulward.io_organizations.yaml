@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
-  name: organizations.bulward.io
+  name: organizations.storage.bulward.io
 spec:
-  group: bulward.io
+  group: storage.bulward.io
   names:
     kind: Organization
     listKind: OrganizationList

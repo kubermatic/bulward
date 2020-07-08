@@ -19,6 +19,6 @@ load("@io_k8s_repo_infra//:repos.bzl", "configure")
 # use k8s.io/repo-infra to configure go and bazel
 # default minimum_bazel_version is 0.29.1
 configure(
-    go_version = "1.13",
+    go_version = "1.14",
     rbe_name = None,
 )

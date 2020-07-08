@@ -141,7 +141,7 @@ func (r *OrganizationRoleTemplateReconciler) handleDeletion(ctx context.Context,
 	// Update the OrganizationRoleTemplate Status to Terminating.
 	readyCondition, _ := organizationRoleTemplate.Status.GetCondition(corev1alpha1.OrganizationRoleTemplateReady)
 	if readyCondition.Status != corev1alpha1.ConditionFalse ||
-		readyCondition.Status == corev1alpha1.ConditionFalse && readyCondition.Reason != corev1alpha1.OrganizationTerminatingReason {
+		readyCondition.Status == corev1alpha1.ConditionFalse && readyCondition.Reason != corev1alpha1.OrganizationRoleTemplateTerminatingReason {
 		organizationRoleTemplate.Status.ObservedGeneration = organizationRoleTemplate.Generation
 		organizationRoleTemplate.Status.SetCondition(corev1alpha1.OrganizationRoleTemplateCondition{
 			Type:    corev1alpha1.OrganizationRoleTemplateReady,

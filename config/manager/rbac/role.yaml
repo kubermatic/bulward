@@ -58,14 +58,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - bulward.io
-  resources:
-  - organizations/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - rolebindings
@@ -90,3 +82,20 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - storage.bulward.io
+  resources:
+  - organizations
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - storage.bulward.io
+  resources:
+  - organizations/status
+  verbs:
+  - get
+  - patch
+  - update
