@@ -46,6 +46,7 @@ type OrganizationRoleTemplateReconciler struct {
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=get;list;watch;update
+// The following permission of apiserver.bulward.io is needed for service account to create role for owner to access projects.
 // +kubebuilder:rbac:groups=apiserver.bulward.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete;bind
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
