@@ -18,8 +18,11 @@ package test
 
 import (
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 var (
-	testScheme = scheme.Scheme
+	testScheme      = scheme.Scheme
+	cleanUpStrategy = string(testutil.CleanupOnSuccess)
 )

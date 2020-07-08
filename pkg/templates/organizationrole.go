@@ -41,14 +41,14 @@ func ProjectAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTempla
 			Scopes: []corev1alpha1.RoleTemplateScope{
 				corev1alpha1.RoleTemplateScopeOrganization,
 			},
-			BindTo: []corev1alpha1.BindToType{
+			BindTo: []corev1alpha1.BindingType{
 				corev1alpha1.BindToOwners,
 			},
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"apiserver.bulward.io"},
 					Resources: []string{"projects"},
-					Verbs:     []string{rbacv1.VerbAll},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
 			},
 		},
@@ -64,7 +64,7 @@ func RBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate 
 			Scopes: []corev1alpha1.RoleTemplateScope{
 				corev1alpha1.RoleTemplateScopeOrganization,
 			},
-			BindTo: []corev1alpha1.BindToType{
+			BindTo: []corev1alpha1.BindingType{
 				corev1alpha1.BindToOwners,
 			},
 			Rules: []rbacv1.PolicyRule{

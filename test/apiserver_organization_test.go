@@ -51,7 +51,7 @@ func TestAPIServerOrganization(t *testing.T) {
 	t.Cleanup(cancel)
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
-	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanupOnSuccess)
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	require.NoError(t, err)
 	dcl, err := dynamic.NewForConfig(cfg)
 	if err != nil {
