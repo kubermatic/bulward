@@ -281,17 +281,14 @@ func TestVisibleFiltering(t *testing.T) {
 			org := &apiserverv1alpha1.Organization{}
 			assert.True(t, errors.IsNotFound(tc.Client.Get(ctx, types.NamespacedName{Name: otherOrg.Name}, org)), "found forbidden org")
 			require.NoError(t, tc.Client.Get(ctx, types.NamespacedName{Name: tc.Org.Name}, org), "get")
-			require.NoError(t, testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
-				if len(org.Spec.Owners) == 1 {
-					org.Spec.Owners = append(org.Spec.Owners, rbacv1.Subject{
-						Kind:     "User",
-						APIGroup: rbacv1.GroupName,
-						Name:     "testUser",
-					})
-				}
+			err := testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
+				org.Labels["aa"] = "bb"
 				return nil
-			}), "update")
-			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
+			})
+			require.True(t, errors.IsForbidden(err), "update should be forbidden by non-owner, got %v", err)
+			err = tc.Client.Delete(ctx, org)
+			require.True(t, errors.IsForbidden(err), "delete should be forbidden by non-owners, got %v", err)
+			require.NoError(t, cl.Delete(ctx, org))
 			assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
 		})
 	}
