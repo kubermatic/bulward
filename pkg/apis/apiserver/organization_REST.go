@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
@@ -33,6 +34,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
@@ -123,19 +125,23 @@ func (o *OrganizationREST) NewList() runtime.Object {
 }
 
 func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	visible, err := o.isVisible(ctx, name, "get")
+	uOrg, err := o.dynamicRI.Get(ctx, name, *options)
+	if err != nil {
+		return nil, err
+	}
+
+	org, err := ConvertFromUnstructuredCoreV1Alpha1(uOrg, o.scheme)
+	if err != nil {
+		return nil, err
+	}
+	visible, err := o.isVisible(ctx, org)
 	if err != nil {
 		return nil, err
 	}
 	if !visible {
 		return nil, apierrors.NewNotFound(qualifiedResource, name)
 	}
-
-	org, err := o.dynamicRI.Get(ctx, name, *options)
-	if err != nil {
-		return nil, err
-	}
-	return ConvertFromUnstructuredCoreV1Alpha1(org, o.scheme)
+	return org, nil
 }
 
 func (o *OrganizationREST) List(ctx context.Context, options *internalversion.ListOptions) (runtime.Object, error) {
@@ -155,7 +161,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	lst := sol.Items
 	sol.Items = nil
 	for _, it := range lst {
-		visible, err := o.isVisible(ctx, it.Name, "get")
+		visible, err := o.isVisible(ctx, &it)
 		if err != nil {
 			return nil, err
 		}
@@ -175,10 +181,18 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
+	org := obj.(*Organization)
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(obj.(*Organization), o.scheme)
+	visible, err := o.isVisible(ctx, org)
+	if err != nil {
+		return nil, err
+	}
+	if !visible {
+		return nil, apierrors.NewBadRequest("cannot create organization you're not the owner of")
+	}
+	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(org, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -191,23 +205,15 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
-	return ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+	obj, err = ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+	return obj, err
 }
 
 func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
-	visible, err := o.isVisible(ctx, name, "delete")
-	if err != nil {
-		return nil, false, err
-	}
-	if !visible {
-		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
-	}
-
 	a, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return nil, false, err
 	}
-
 	preconditions := objInfo.Preconditions()
 	rv := ""
 	if preconditions != nil && preconditions.ResourceVersion != nil {
@@ -224,6 +230,17 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 	if preconditions != nil && preconditions.UID != nil && oldObj.UID != *preconditions.UID {
 		return nil, false, fmt.Errorf("UID differs, precondition UID: %s, found %s", *preconditions.UID, oldObj.UID)
 	}
+	if err := createValidation(ctx, oldObj); err != nil {
+		return nil, false, err
+	}
+	visible, err := o.isVisible(ctx, oldObj)
+	if err != nil {
+		return nil, false, err
+	}
+	if !visible {
+		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
+	}
+
 	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
 	if err != nil {
 		return nil, false, err
@@ -254,13 +271,6 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 }
 
 func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
-	visible, err := o.isVisible(ctx, name, "delete")
-	if err != nil {
-		return nil, false, err
-	}
-	if !visible {
-		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
-	}
 	obj, err := o.Get(ctx, name, &metav1.GetOptions{})
 	if err != nil {
 		return nil, false, err
@@ -299,7 +309,11 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 			select {
 			case <-pw.StopChan():
 				return
-			case ev := <-wi.ResultChan():
+			case ev, ok := <-wi.ResultChan():
+				if !ok {
+					// channel closed
+					return
+				}
 				if ev.Type == watch.Error {
 					res <- ev
 					return
@@ -310,7 +324,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					return
 				}
 				ev.Object = org
-				visible, err := o.isVisible(ctx, org.Name, "watch")
+				visible, err := o.isVisible(ctx, org)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
@@ -336,8 +350,41 @@ func internalErrorWatchEvent(err error) watch.Event {
 	}
 }
 
-func (o *OrganizationREST) isVisible(ctx context.Context, organizationName string, verb string) (bool, error) {
-	// TODO: Placeholder for future PR implementation
-	// https://github.com/kubermatic/bulward/pull/27
-	return true, nil
+func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organization) (bool, error) {
+	attrs, err := filters.GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return false, err
+	}
+	user := attrs.GetUser()
+	if user == nil {
+		klog.Warning("unknown user, you may running API extension server with --delegated-auth=false")
+		return true, nil
+	}
+
+	for _, sub := range append(
+		organization.Status.Members,
+		// This is important for seeing organizations you own before controller syncs status
+		// otherwise a watch misses create event
+		organization.Spec.Owners...,
+	) {
+		switch sub.Kind {
+		case rbacv1.UserKind:
+			if sub.Name == user.GetName() {
+				return true, nil
+			}
+		case rbacv1.GroupKind:
+			for _, grp := range user.GetGroups() {
+				if sub.Name == grp {
+					return true, nil
+				}
+			}
+		case rbacv1.ServiceAccountKind:
+			if fmt.Sprintf("system:serviceaccount:%s:%s", sub.Namespace, sub.Name) == user.GetName() {
+				return true, nil
+			}
+		default:
+			return false, fmt.Errorf("unknown subject's kind: %s, %v in organization %s", sub.Kind, sub, organization.Name)
+		}
+	}
+	return false, err
 }

@@ -19,6 +19,7 @@ package apiserver
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -61,6 +62,10 @@ func ConvertFromUnstructuredCoreV1Alpha1(internalOrgv1alpha1 *unstructured.Unstr
 }
 
 func ConvertToUnstructuredCoreV1Alpha1OrganizationList(organizations *OrganizationList, scheme *runtime.Scheme) (*unstructured.UnstructuredList, error) {
+	accesssor, err := meta.ListAccessor(organizations)
+	if err != nil {
+		return nil, err
+	}
 	sol := &unstructured.UnstructuredList{}
 	for _, it := range organizations.Items {
 		org, err := ConvertToUnstructuredCoreV1Alpha1Organization(&it, scheme)
@@ -69,10 +74,18 @@ func ConvertToUnstructuredCoreV1Alpha1OrganizationList(organizations *Organizati
 		}
 		sol.Items = append(sol.Items, *org)
 	}
+	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, internalOrganizationResource))
+	sol.SetResourceVersion(accesssor.GetResourceVersion())
+	sol.SetContinue(accesssor.GetContinue())
+	sol.SetRemainingItemCount(accesssor.GetRemainingItemCount())
 	return sol, nil
 }
 
 func ConvertFromUnstructuredCoreV1Alpha1List(internalOrgv1alpha1 *unstructured.UnstructuredList, scheme *runtime.Scheme) (*OrganizationList, error) {
+	accesssor, err := meta.ListAccessor(internalOrgv1alpha1)
+	if err != nil {
+		return nil, err
+	}
 	sol := &OrganizationList{}
 	for _, it := range internalOrgv1alpha1.Items {
 		org, err := ConvertFromUnstructuredCoreV1Alpha1(&it, scheme)
@@ -81,5 +94,9 @@ func ConvertFromUnstructuredCoreV1Alpha1List(internalOrgv1alpha1 *unstructured.U
 		}
 		sol.Items = append(sol.Items, *org)
 	}
+	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", SchemeGroupVersion.Group, "v1alpha1", externalOrganizationResource))
+	sol.SetResourceVersion(accesssor.GetResourceVersion())
+	sol.SetContinue(accesssor.GetContinue())
+	sol.SetRemainingItemCount(accesssor.GetRemainingItemCount())
 	return sol, nil
 }

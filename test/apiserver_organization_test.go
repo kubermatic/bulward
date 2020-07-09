@@ -19,18 +19,20 @@ package test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kubermatic/utils/pkg/testutil"
@@ -38,6 +40,7 @@ import (
 	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
+	"github.com/kubermatic/bulward/test/events"
 )
 
 func init() {
@@ -45,6 +48,10 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(testScheme))
 	utilruntime.Must(apiserverv1alpha1.AddToScheme(testScheme))
 }
+
+var (
+	gvr = apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
+)
 
 func TestAPIServerOrganization(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,15 +61,12 @@ func TestAPIServerOrganization(t *testing.T) {
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	require.NoError(t, err)
 	dcl, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return
-	}
-
+	require.NoError(t, err)
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",
-		Name:     "Owner1",
+		Name:     "kubernetes-admin",
 	}
 	org := &apiserverv1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
@@ -77,26 +81,16 @@ func TestAPIServerOrganization(t *testing.T) {
 		},
 	}
 
-	gvr := apiserverv1alpha1.Resource("organizations").WithVersion("v1alpha1")
 	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
 		FieldSelector: "metadata.name=test",
 	})
 	require.NoError(t, err)
-	t.Cleanup(wi.Stop)
+	eventTracer := events.NewTracer(wi, events.IsObjectName("test"))
+	t.Cleanup(eventTracer.TestCleanupFunc(t))
 
 	t.Log("create")
 	require.NoError(t, cl.Create(ctx, org))
-	for ev := range wi.ResultChan() {
-		if ev.Type == watch.Added {
-			obj := &apiserverv1alpha1.Organization{}
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if assert.Equal(t, "test", obj.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
-				assert.Equal(t, description, obj.Spec.Metadata.Description)
-				t.Log("watch -- created")
-				break
-			}
-		}
-	}
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Added)))
 
 	t.Log("get")
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: org.Name}, org))
@@ -111,19 +105,7 @@ func TestAPIServerOrganization(t *testing.T) {
 		}
 	}
 
-modfor:
-	for {
-		select {
-		case ev := <-wi.ResultChan():
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, org, nil))
-			if assert.Equal(t, "test", org.Name, "got non-test organization, meaning watch fieldSelector hasn't functioned properly") {
-				t.Log("watch -- modified")
-			}
-		case <-time.After(time.Second):
-			break modfor
-		}
-	}
-
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 	assert.Equal(t, description, org.Spec.Metadata.Description, "description")
 	assert.NotEqual(t, 0, org.Status.ObservedGeneration, "observed generation should be propagated")
 	if assert.NotEmpty(t, org.Status.Namespace, "namespace is empty") {
@@ -135,6 +117,7 @@ modfor:
 		org.Labels = map[string]string{"aa": "bb"}
 		return nil
 	}))
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Modified)))
 
 	org = &apiserverv1alpha1.Organization{}
 	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, org))
@@ -142,15 +125,204 @@ modfor:
 
 	t.Log("delete")
 	assert.NoError(t, cl.Delete(ctx, org))
+	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
+}
 
-	for ev := range wi.ResultChan() {
-		if ev.Type == watch.Deleted {
-			obj := &apiserverv1alpha1.Organization{}
-			require.NoError(t, scheme.Scheme.Convert(ev.Object, obj, nil))
-			if assert.Equal(t, "test", obj.Name) {
-				t.Log("watch -- deleted")
-				break
-			}
-		}
+type TestVisibleFilteringTestCase struct {
+	Name                string
+	Subject             rbacv1.Subject
+	ImpersonationConfig rest.ImpersonationConfig
+	Org                 *apiserverv1alpha1.Organization
+	Client              *testutil.RecordingClient
+	tracer              *events.Tracer
+}
+
+func TestVisibleFiltering(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	cfg, err := config.GetConfig()
+	require.NoError(t, err)
+	cfg.UserAgent = t.Name()
+	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
+	t.Cleanup(cl.CleanUpFunc(ctx))
+	dcl, err := dynamic.NewForConfig(cfg)
+	require.NoError(t, err)
+	wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+		LabelSelector: "test-name=" + t.Name(),
+	})
+	require.NoError(t, err)
+	globalEventTraced := events.NewTracer(wi)
+	t.Cleanup(globalEventTraced.TestCleanupFunc(t))
+
+	owner := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "kubernetes-admin",
 	}
+	testCase := []*TestVisibleFilteringTestCase{
+		{
+			Name: "user",
+			Subject: rbacv1.Subject{
+				Kind:     rbacv1.UserKind,
+				APIGroup: rbacv1.GroupName,
+				Name:     "user",
+			},
+			ImpersonationConfig: rest.ImpersonationConfig{
+				UserName: "user",
+			},
+		},
+		{
+			Name: "group",
+			Subject: rbacv1.Subject{
+				Kind:     rbacv1.GroupKind,
+				APIGroup: rbacv1.GroupName,
+				Name:     "group",
+			},
+			ImpersonationConfig: rest.ImpersonationConfig{
+				UserName: "lala",
+				// without "system:authenticated" things are breaking...cannot RESTMapper doesn't function
+				Groups: []string{"system:authenticated", "group"},
+			},
+		},
+		{
+			Name: "sa",
+			Subject: rbacv1.Subject{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      "default",
+				Namespace: "default",
+			},
+			ImpersonationConfig: rest.ImpersonationConfig{
+				UserName: "system:serviceaccount:default:default",
+			},
+		},
+	}
+	t.Log("ensuring cluster RBAC")
+	ensureClusterRBAC(t, ctx, cl, testCase)
+
+	t.Log("creating orgs")
+	for _, tc := range testCase {
+		cfg, err := ctrl.GetConfig()
+		require.NoError(t, err)
+		cfg.Impersonate = tc.ImpersonationConfig
+		cfg.UserAgent = t.Name() + "/" + tc.Name
+		tc.Client = testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
+		t.Cleanup(tc.Client.CleanUpFunc(ctx))
+		dcl, err := dynamic.NewForConfig(cfg)
+		require.NoError(t, err)
+		wi, err := dcl.Resource(gvr).Watch(ctx, metav1.ListOptions{
+			LabelSelector: "test-name=" + t.Name(),
+		})
+		require.NoError(t, err)
+		tc.tracer = events.NewTracer(wi, events.IsObjectName("test-"+tc.Name))
+		t.Cleanup(tc.tracer.TestCleanupFunc(t))
+		tc.Org = &apiserverv1alpha1.Organization{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-" + tc.Name,
+				Labels: map[string]string{
+					"test-name": t.Name(),
+				},
+			},
+			Spec: storagev1alpha1.OrganizationSpec{
+				Metadata: &storagev1alpha1.OrganizationMetadata{
+					DisplayName: "test",
+					Description: "desc",
+				},
+				Owners: []rbacv1.Subject{owner},
+			},
+		}
+		require.Error(t, tc.Client.Create(ctx, tc.Org), "creating organization I'm not owner of should be forbidden")
+		require.NoError(t, cl.Create(ctx, tc.Org))
+		assert.NoError(t, globalEventTraced.WaitUntil(ctx, events.AllOf(
+			events.IsType(watch.Added),
+			events.IsObjectName(tc.Org.Name),
+		)))
+		require.NoError(t, testutil.WaitUntilReady(ctx, cl, tc.Org))
+		rb := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "rb",
+				Namespace: tc.Org.Status.Namespace.Name,
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     "Role",
+				Name:     "test",
+			},
+			Subjects: []rbacv1.Subject{tc.Subject},
+		}
+		require.NoError(t, cl.Create(ctx, rb))
+		assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Modified)))
+	}
+
+	t.Log("waiting for orgs member status updates")
+	for _, tc := range testCase {
+		require.NoError(t, cl.WaitUntil(ctx, tc.Org, func() (done bool, err error) {
+			for _, member := range tc.Org.Status.Members {
+				if member == tc.Subject {
+					return true, nil
+				}
+			}
+			return false, nil
+		}))
+	}
+
+	for i, tc := range testCase {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(ctx)
+			t.Cleanup(cancel)
+			otherOrg := testCase[(i+1)%len(testCase)].Org
+
+			orgs := &apiserverv1alpha1.OrganizationList{}
+			require.NoError(t, tc.Client.List(ctx, orgs, client.MatchingLabels(tc.Org.Labels)))
+			if assert.Len(t, orgs.Items, 1) {
+				assert.Equal(t, tc.Org.Name, orgs.Items[0].Name)
+			}
+
+			org := &apiserverv1alpha1.Organization{}
+			assert.True(t, errors.IsNotFound(tc.Client.Get(ctx, types.NamespacedName{Name: otherOrg.Name}, org)), "found forbidden org")
+			require.NoError(t, tc.Client.Get(ctx, types.NamespacedName{Name: tc.Org.Name}, org), "get")
+			require.NoError(t, testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
+				if len(org.Spec.Owners) == 1 {
+					org.Spec.Owners = append(org.Spec.Owners, rbacv1.Subject{
+						Kind:     "User",
+						APIGroup: rbacv1.GroupName,
+						Name:     "testUser",
+					})
+				}
+				return nil
+			}), "update")
+			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
+			assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
+		})
+	}
+}
+
+func ensureClusterRBAC(t *testing.T, ctx context.Context, cl *testutil.RecordingClient, testCase []*TestVisibleFilteringTestCase) {
+	t.Log("creating necessary cluster roles/rolebinding")
+	crole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bulward:test-visible-filtering",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Verbs:     []string{rbacv1.VerbAll},
+				APIGroups: []string{apiserverv1alpha1.SchemeGroupVersion.Group},
+				Resources: []string{rbacv1.ResourceAll},
+			},
+		},
+	}
+	crolebinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bulward:test-visible-filtering",
+		},
+		RoleRef: rbacv1.RoleRef{
+			Name: crole.Name,
+			Kind: "ClusterRole",
+		},
+	}
+	for _, tc := range testCase {
+		crolebinding.Subjects = append(crolebinding.Subjects, tc.Subject)
+	}
+	require.NoError(t, cl.EnsureCreated(ctx, crole))
+	require.NoError(t, cl.EnsureCreated(ctx, crolebinding))
 }
