@@ -57,6 +57,10 @@ func (r *ProjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, fmt.Errorf("reconciling namespace: %w", err)
 	}
 
+	if err := r.reconcileMembers(ctx, project); err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconciling members: %w", err)
+	}
+
 	if !project.IsReady() {
 		project.Status.ObservedGeneration = project.Generation
 		project.Status.SetCondition(storagev1alpha1.ProjectCondition{
