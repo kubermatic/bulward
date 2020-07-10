@@ -16,7 +16,7 @@ spec:
     shortNames:
     - iprj
     singular: project
-  scope: Namespace
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.namespace.name

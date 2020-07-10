@@ -28,7 +28,7 @@ import (
 // +kubebuilder:printcolumn:name="Display Name",type="string",JSONPath=".metadata.name"
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Namespace,shortName=iprj
+// +kubebuilder:resource:scope=Namespaced,shortName=iprj
 type Project struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
