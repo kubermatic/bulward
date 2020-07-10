@@ -1,0 +1,58 @@
+project_name: bulward
+before:
+  hooks:
+    - make test
+    - make lint
+release:
+  github:
+    owner: kubermatic
+    name: bulward
+  prerelease: true
+builds:
+  - &build-manager
+    id: manager
+    binary: manager
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    main: cmd/manager/main.go
+  - <<: *build-manager
+    id: apiserver
+    binary: apiserver
+    main: cmd/apiserver/main.go
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+  algorithm: sha256
+dockers:
+  - &docker
+    goos: linux
+    goarch: amd64
+    binaries:
+      - manager
+    builds:
+      - manager
+    image_templates:
+      - "quay.io/kubermatic/bulward-manager:latest"
+      - "quay.io/kubermatic/bulward-manager:{{ .Tag }}"
+      - "quay.io/kubermatic/bulward-manager:v{{ .Major }}"
+    dockerfile: config/dockerfiles/manager.Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - <<: *docker
+    binaries:
+      - apiserver
+    builds:
+      - apiserver
+    image_templates:
+      - "quay.io/kubermatic/bulward-apiserver:latest"
+      - "quay.io/kubermatic/bulward-apiserver:{{ .Tag }}"
+      - "quay.io/kubermatic/bulward-apiserver:v{{ .Major }}"
+    dockerfile: config/dockerfiles/apiserver.Dockerfile
