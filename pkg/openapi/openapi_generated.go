@@ -41,6 +41,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.OrganizationMetadata":  schema_pkg_apis_storage_v1alpha1_OrganizationMetadata(ref),
 		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.OrganizationSpec":      schema_pkg_apis_storage_v1alpha1_OrganizationSpec(ref),
 		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.OrganizationStatus":    schema_pkg_apis_storage_v1alpha1_OrganizationStatus(ref),
+		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.Project":               schema_pkg_apis_storage_v1alpha1_Project(ref),
+		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectCondition":      schema_pkg_apis_storage_v1alpha1_ProjectCondition(ref),
+		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectList":           schema_pkg_apis_storage_v1alpha1_ProjectList(ref),
+		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectSpec":           schema_pkg_apis_storage_v1alpha1_ProjectSpec(ref),
+		"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectStatus":         schema_pkg_apis_storage_v1alpha1_ProjectStatus(ref),
 		"k8s.io/api/apps/v1.ControllerRevision":                                         schema_k8sio_api_apps_v1_ControllerRevision(ref),
 		"k8s.io/api/apps/v1.ControllerRevisionList":                                     schema_k8sio_api_apps_v1_ControllerRevisionList(ref),
 		"k8s.io/api/apps/v1.DaemonSet":                                                  schema_k8sio_api_apps_v1_DaemonSet(ref),
@@ -713,6 +718,237 @@ func schema_pkg_apis_storage_v1alpha1_OrganizationStatus(ref common.ReferenceCal
 		},
 		Dependencies: []string{
 			"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.OrganizationCondition", "k8s.io/api/rbac/v1.Subject"},
+	}
+}
+
+func schema_pkg_apis_storage_v1alpha1_Project(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Project is internal representation for Project in Bulward.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectSpec", "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_storage_v1alpha1_ProjectCondition(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProjectCondition contains details for the current condition of this Project.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of the Project condition, currently ('Ready').",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is the status of the condition, one of ('True', 'False', 'Unknown').",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastTransitionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastTransitionTime is the last time the condition transits from one status to another.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is the (brief) reason for the condition's last transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the human readable message indicating details about last transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"type", "status", "lastTransitionTime", "reason", "message"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_storage_v1alpha1_ProjectList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProjectList contains a list of Projects.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.Project"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.Project", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_storage_v1alpha1_ProjectSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProjectSpec describes the desired state of Project.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"owners": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Owners holds the RBAC subjects that represent the owners of this project.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/rbac/v1.Subject"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"owners"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/rbac/v1.Subject"},
+	}
+}
+
+func schema_pkg_apis_storage_v1alpha1_ProjectStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ProjectStatus describes the observed state of Project.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NamespaceName is the name of the Namespace that the Project manages.",
+							Ref:         ref("github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ObjectReference"),
+						},
+					},
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the most recent generation observed for this Project by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions represents the latest available observations of a Project's current state.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectCondition"),
+									},
+								},
+							},
+						},
+					},
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DEPRECATED. Phase represents the current lifecycle state of this object. Consider this field DEPRECATED, it will be removed as soon as there is a mechanism to map conditions to strings when printing the property. This is only for display purpose, for everything else use conditions.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"members": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Members enumerate all rbacv1.Subject mentioned in the Project's RoleBinding's",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8s.io/api/rbac/v1.Subject"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ObjectReference", "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1.ProjectCondition", "k8s.io/api/rbac/v1.Subject"},
 	}
 }
 
