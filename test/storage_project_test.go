@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -75,5 +76,33 @@ func TestCoreProject(t *testing.T) {
 	projectNs.Name = fmt.Sprintf("%s%s%s", prj.Namespace, "-bulward-", prj.Name)
 	require.NoError(t, testutil.WaitUntilFound(ctx, cl, projectNs))
 
-	// TODO check roles
+	rbacSubject := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "User1",
+	}
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "user1-rb",
+			Namespace: projectNs.Name,
+		},
+		Subjects: []rbacv1.Subject{rbacSubject},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     "role",
+		},
+	}
+	require.NoError(t, cl.Create(ctx, rb))
+	require.NoError(t, cl.WaitUntil(ctx, prj, func() (done bool, err error) {
+		if len(prj.Status.Members) == 1 {
+			assert.Contains(t, prj.Status.Members, rbacSubject)
+			return true, nil
+		}
+		return false, nil
+	}))
+	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, rb))
+	require.NoError(t, cl.WaitUntil(ctx, prj, func() (done bool, err error) {
+		return len(prj.Status.Members) == 0, nil
+	}), "organization owner can not remove organization member")
 }

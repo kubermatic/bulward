@@ -22,7 +22,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-// TODO add test
 func extractSubjects(rbs *rbacv1.RoleBindingList) []rbacv1.Subject {
 	var subjects []rbacv1.Subject
 	for _, rb := range rbs.Items {
