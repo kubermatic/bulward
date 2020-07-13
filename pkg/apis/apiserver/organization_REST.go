@@ -134,7 +134,7 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 	if err != nil {
 		return nil, err
 	}
-	visible, err := o.isVisible(ctx, org)
+	visible, err := o.isMember(ctx, org)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	lst := sol.Items
 	sol.Items = nil
 	for _, it := range lst {
-		visible, err := o.isVisible(ctx, &it)
+		visible, err := o.isMember(ctx, &it)
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +186,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 		return nil, err
 	}
 	// here we're not using checkIsOwner since we're returning different error
-	isOwner, err := o.memberOf(ctx, org.Spec.Owners)
+	isOwner, err := o.containsUser(ctx, org.Spec.Owners)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					return
 				}
 				ev.Object = org
-				visible, err := o.isVisible(ctx, org)
+				visible, err := o.isMember(ctx, org)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
@@ -365,14 +365,14 @@ func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organ
 	if err != nil {
 		return err
 	}
-	visible, err := o.isVisible(ctx, organization)
+	visible, err := o.isMember(ctx, organization)
 	if err != nil {
 		return err
 	}
 	if !visible {
 		return apierrors.NewNotFound(qualifiedResource, organization.Name)
 	}
-	isOwner, err := o.memberOf(ctx, organization.Spec.Owners)
+	isOwner, err := o.containsUser(ctx, organization.Spec.Owners)
 	if err != nil {
 		return err
 	}
@@ -386,16 +386,19 @@ func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organ
 	return nil
 }
 
-func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organization) (bool, error) {
-	return o.memberOf(ctx,
+func (o *OrganizationREST) isMember(ctx context.Context, organization *Organization) (bool, error) {
+	return o.containsUser(ctx,
 		append(
+			// This is important for seeing organizations you own before controller syncs status
+			// otherwise a watch misses create event
 			organization.Spec.Owners,
 			organization.Status.Members...,
 		),
 	)
 }
 
-func (o *OrganizationREST) memberOf(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
+// containsUser function should only be called in the `isMember` and `isOwner`, not in the REST implementations, having `isMember` `containsUser` `checkIsOwner` all in REST operations just confuses people
+func (o *OrganizationREST) containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return false, err
