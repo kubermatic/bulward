@@ -20,6 +20,11 @@ KUBECONFIG ?= ${HOME}/.kube/kind-config-${KIND_CLUSTER}
 SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
 VERSION = v1
+# Debug BUILD_ARGS
+# BUILD_ARGS?=-gcflags "all=-N -l"
+# Release BUILD_ARGS
+# BUILD_ARGS?=-gcflags "all=-w"
+BUILD_ARGS?=
 
 export CGO_ENABLED:=0
 
@@ -40,7 +45,7 @@ bin/windows_amd64/%: GOARGS = GOOS=windows GOARCH=amd64
 
 bin/%:
 	$(eval COMPONENT=$(shell basename $*))
-	$(GOARGS) go build  -o bin/$* cmd/$(COMPONENT)/main.go
+	$(GOARGS) go build $(BUILD_ARGS) -o bin/$* cmd/$(COMPONENT)/main.go
 
 # ---------------
 # Code Generators

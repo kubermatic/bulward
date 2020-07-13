@@ -365,7 +365,7 @@ func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organ
 	if err != nil {
 		return err
 	}
-	visible, err := o.memberOf(ctx, organization.Spec.Owners)
+	visible, err := o.isVisible(ctx, organization)
 	if err != nil {
 		return err
 	}
