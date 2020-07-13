@@ -18,21 +18,20 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
-	"github.com/kubermatic/utils/pkg/testutil"
-
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
+	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 func init() {
@@ -49,7 +48,7 @@ func TestCoreProject(t *testing.T) {
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
-	ns := &v1.Namespace{}
+	ns := &corev1.Namespace{}
 	ns.Name = "core-organization-test"
 
 	owner := rbacv1.Subject{
@@ -72,5 +71,9 @@ func TestCoreProject(t *testing.T) {
 	require.NoError(t, cl.Create(ctx, prj))
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, prj))
 
-	// TODO check if namspace is created and roles
+	projectNs := &corev1.Namespace{}
+	projectNs.Name = fmt.Sprintf("%s%s%s", prj.Namespace, "-bulward-", prj.Name)
+	require.NoError(t, testutil.WaitUntilFound(ctx, cl, projectNs))
+
+	// TODO check roles
 }
