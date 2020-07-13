@@ -20,10 +20,11 @@ KUBECONFIG ?= ${HOME}/.kube/kind-config-${KIND_CLUSTER}
 SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
 VERSION = v1
+
 # Debug BUILD_ARGS
 # BUILD_ARGS?=-gcflags "all=-N -l"
-# Release BUILD_ARGS
-# BUILD_ARGS?=-gcflags "all=-w"
+# sudo dlv attach --headless=true -l localhost:9060 --api-version=2 --accept-multiclient  --only-same-user=false <PID>
+# <PID> could be find via pgrep e.g. $(pgrep apiserver -n)
 BUILD_ARGS?=
 
 export CGO_ENABLED:=0
