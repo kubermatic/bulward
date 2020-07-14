@@ -110,7 +110,7 @@ func (r *ProjectReconciler) reconcileMembers(ctx context.Context, project *stora
 	return nil
 }
 
-func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager, log logr.Logger) error {
+func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	enqueuer := owner.EnqueueRequestForOwner(&storagev1alpha1.Project{}, mgr.GetScheme()).(*handler.EnqueueRequestsFromMapFunc)
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -121,8 +121,7 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager, log logr.Logger) 
 				ctx := context.Background()
 				ns := &corev1.Namespace{}
 				if err := r.Client.Get(ctx, types.NamespacedName{Name: object.Meta.GetNamespace()}, ns); err != nil {
-					log.Error(err, fmt.Sprintf("failed to get rolebinding namespace %q", object.Meta.GetNamespace()))
-					return []reconcile.Request{}
+					panic(err)
 				}
 				return enqueuer.ToRequests.Map(handler.MapObject{
 					Meta:   ns,
