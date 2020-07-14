@@ -185,13 +185,8 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	// here we're not using checkIsOwner since we're returning different error
-	isOwner, err := o.containsUser(ctx, org.Spec.Owners)
-	if err != nil {
+	if err := o.checkIsOwner(ctx, org); err != nil {
 		return nil, err
-	}
-	if !isOwner {
-		return nil, apierrors.NewBadRequest("cannot create organization you're not the owner of")
 	}
 	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(org, o.scheme)
 	if err != nil {
@@ -360,19 +355,13 @@ func internalErrorWatchEvent(err error) watch.Event {
 	}
 }
 
+// checkIsOwner checks if the user extracted from Context is the owner of the Organization.
 func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organization) error {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return err
 	}
-	visible, err := o.isMember(ctx, organization)
-	if err != nil {
-		return err
-	}
-	if !visible {
-		return apierrors.NewNotFound(qualifiedResource, organization.Name)
-	}
-	isOwner, err := o.containsUser(ctx, organization.Spec.Owners)
+	isOwner, err := containsUser(ctx, organization.Spec.Owners)
 	if err != nil {
 		return err
 	}
@@ -386,8 +375,9 @@ func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organ
 	return nil
 }
 
+// isMember checks if the user extracted from Context is the member of the Organization.
 func (o *OrganizationREST) isMember(ctx context.Context, organization *Organization) (bool, error) {
-	return o.containsUser(ctx,
+	return containsUser(ctx,
 		append(
 			// This is important for seeing organizations you own before controller syncs status
 			// otherwise a watch misses create event
@@ -398,7 +388,7 @@ func (o *OrganizationREST) isMember(ctx context.Context, organization *Organizat
 }
 
 // containsUser function should only be called in the `isMember` and `isOwner`, not in the REST implementations, having `isMember` `containsUser` `checkIsOwner` all in REST operations just confuses people
-func (o *OrganizationREST) containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
+func containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return false, err
@@ -406,7 +396,7 @@ func (o *OrganizationREST) containsUser(ctx context.Context, subjects []rbacv1.S
 	user := attrs.GetUser()
 	if user == nil {
 		klog.Warning("unknown user, you may running API extension server with --delegated-auth=false")
-		return true, nil
+		return false, nil
 	}
 
 	for _, sub := range subjects {

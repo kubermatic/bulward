@@ -228,7 +228,8 @@ func TestVisibleFiltering(t *testing.T) {
 				Owners: []rbacv1.Subject{owner},
 			},
 		}
-		require.Error(t, tc.Client.Create(ctx, tc.Org), "creating organization I'm not owner of should be forbidden")
+		err = tc.Client.Create(ctx, tc.Org)
+		require.True(t, errors.IsForbidden(err), "creating organization I'm not owner of should be forbidden")
 		require.NoError(t, cl.Create(ctx, tc.Org))
 		assert.NoError(t, globalEventTraced.WaitUntil(ctx, events.AllOf(
 			events.IsType(watch.Added),
