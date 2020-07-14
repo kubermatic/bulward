@@ -134,12 +134,8 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 	if err != nil {
 		return nil, err
 	}
-	visible, err := o.isVisible(ctx, org)
-	if err != nil {
+	if err := o.checkMembership(ctx, org); err != nil {
 		return nil, err
-	}
-	if !visible {
-		return nil, apierrors.NewNotFound(qualifiedResource, name)
 	}
 	return org, nil
 }
@@ -161,7 +157,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	lst := sol.Items
 	sol.Items = nil
 	for _, it := range lst {
-		visible, err := o.isVisible(ctx, &it)
+		visible, err := o.isMember(ctx, &it)
 		if err != nil {
 			return nil, err
 		}
@@ -185,11 +181,14 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	visible, err := o.isVisible(ctx, org)
+	// Here we're not using checkOwnership since we're returning different error.
+	// User should always include himself/herself in the Owners list, otherwise, we return BadRequest error to
+	// indicate the request is invalid and cannot be processed.
+	isOwner, err := o.containsUser(ctx, org.Spec.Owners)
 	if err != nil {
 		return nil, err
 	}
-	if !visible {
+	if !isOwner {
 		return nil, apierrors.NewBadRequest("cannot create organization you're not the owner of")
 	}
 	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(org, o.scheme)
@@ -233,14 +232,9 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 	if err := createValidation(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
-	visible, err := o.isVisible(ctx, oldObj)
-	if err != nil {
+	if err := o.checkOwnership(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
-	if !visible {
-		return nil, false, apierrors.NewNotFound(qualifiedResource, name)
-	}
-
 	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
 	if err != nil {
 		return nil, false, err
@@ -278,17 +272,31 @@ func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValida
 	if err := deleteValidation(ctx, obj); err != nil {
 		return obj, false, err
 	}
+	if err := o.checkOwnership(ctx, obj.(*Organization)); err != nil {
+		return nil, false, err
+	}
 	err = o.dynamicRI.Delete(ctx, name, *options)
 	return obj, false, err
 }
 
 func (o *OrganizationREST) DeleteCollection(ctx context.Context, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions, listOptions *internalversion.ListOptions) (runtime.Object, error) {
+	orgs, err := o.List(ctx, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	for _, org := range orgs.(*OrganizationList).Items {
+		if err := o.checkOwnership(ctx, &org); err != nil {
+			return nil, err
+		}
+	}
 	opts := &metav1.ListOptions{}
 	if err := o.scheme.Convert(listOptions, opts, nil); err != nil {
 		return nil, err
 	}
-	err := o.dynamicRI.DeleteCollection(ctx, *options, *opts)
-	return nil, err
+	if err := o.dynamicRI.DeleteCollection(ctx, *options, *opts); err != nil {
+		return nil, err
+	}
+	return orgs, nil
 }
 
 func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.ListOptions) (watch.Interface, error) {
@@ -324,7 +332,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					return
 				}
 				ev.Object = org
-				visible, err := o.isVisible(ctx, org)
+				visible, err := o.isMember(ctx, org)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
@@ -350,7 +358,56 @@ func internalErrorWatchEvent(err error) watch.Event {
 	}
 }
 
-func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organization) (bool, error) {
+// checkOwnership checks if the calling user is owner of the organization, and if not returns appropriate error:
+// NotFound if non-member, Forbidden if member
+func (o *OrganizationREST) checkOwnership(ctx context.Context, organization *Organization) error {
+	attrs, err := filters.GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return err
+	}
+	if err := o.checkMembership(ctx, organization); err != nil {
+		return err
+	}
+	isOwner, err := o.containsUser(ctx, organization.Spec.Owners)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return apierrors.NewForbidden(
+			qualifiedResource,
+			organization.Name,
+			fmt.Errorf("organization ownership is required for %s operation", attrs.GetVerb()),
+		)
+	}
+	return nil
+}
+
+// checkMembership checks if the calling user is organization member, and if not returns NotFound error
+func (o *OrganizationREST) checkMembership(ctx context.Context, organization *Organization) error {
+	visible, err := o.isMember(ctx, organization)
+	if err != nil {
+		return err
+	}
+	if !visible {
+		return apierrors.NewNotFound(qualifiedResource, organization.Name)
+	}
+	return nil
+}
+
+// isMember checks if the calling user is organization member
+func (o *OrganizationREST) isMember(ctx context.Context, organization *Organization) (bool, error) {
+	return o.containsUser(ctx,
+		append(
+			// This is important for seeing organizations you own before controller syncs status
+			// otherwise a watch misses create event
+			organization.Spec.Owners,
+			organization.Status.Members...,
+		),
+	)
+}
+
+// containsUser checks whether the calling user is in the subject list
+func (o *OrganizationREST) containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return false, err
@@ -361,12 +418,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 		return true, nil
 	}
 
-	for _, sub := range append(
-		organization.Status.Members,
-		// This is important for seeing organizations you own before controller syncs status
-		// otherwise a watch misses create event
-		organization.Spec.Owners...,
-	) {
+	for _, sub := range subjects {
 		switch sub.Kind {
 		case rbacv1.UserKind:
 			if sub.Name == user.GetName() {
@@ -383,7 +435,7 @@ func (o *OrganizationREST) isVisible(ctx context.Context, organization *Organiza
 				return true, nil
 			}
 		default:
-			return false, fmt.Errorf("unknown subject's kind: %s, %v in organization %s", sub.Kind, sub, organization.Name)
+			return false, fmt.Errorf("unknown subject's kind: %s, %v", sub.Kind, sub)
 		}
 	}
 	return false, err

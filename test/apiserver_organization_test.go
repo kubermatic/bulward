@@ -197,9 +197,6 @@ func TestVisibleFiltering(t *testing.T) {
 			},
 		},
 	}
-	t.Log("ensuring cluster RBAC")
-	ensureClusterRBAC(t, ctx, cl, testCase)
-
 	t.Log("creating orgs")
 	for _, tc := range testCase {
 		cfg, err := ctrl.GetConfig()
@@ -281,48 +278,15 @@ func TestVisibleFiltering(t *testing.T) {
 			org := &apiserverv1alpha1.Organization{}
 			assert.True(t, errors.IsNotFound(tc.Client.Get(ctx, types.NamespacedName{Name: otherOrg.Name}, org)), "found forbidden org")
 			require.NoError(t, tc.Client.Get(ctx, types.NamespacedName{Name: tc.Org.Name}, org), "get")
-			require.NoError(t, testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
-				if len(org.Spec.Owners) == 1 {
-					org.Spec.Owners = append(org.Spec.Owners, rbacv1.Subject{
-						Kind:     "User",
-						APIGroup: rbacv1.GroupName,
-						Name:     "testUser",
-					})
-				}
+			err := testutil.TryUpdateUntil(ctx, tc.Client, org, func() error {
+				org.Labels["aa"] = "bb"
 				return nil
-			}), "update")
-			require.NoError(t, tc.Client.Delete(ctx, org), "delete")
+			})
+			require.True(t, errors.IsForbidden(err), "update should be forbidden by non-owner, got %v", err)
+			err = tc.Client.Delete(ctx, org)
+			require.True(t, errors.IsForbidden(err), "delete should be forbidden by non-owners, got %v", err)
+			require.NoError(t, cl.Delete(ctx, org))
 			assert.NoError(t, tc.tracer.WaitUntil(ctx, events.IsType(watch.Deleted)))
 		})
 	}
-}
-
-func ensureClusterRBAC(t *testing.T, ctx context.Context, cl *testutil.RecordingClient, testCase []*TestVisibleFilteringTestCase) {
-	t.Log("creating necessary cluster roles/rolebinding")
-	crole := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "bulward:test-visible-filtering",
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				Verbs:     []string{rbacv1.VerbAll},
-				APIGroups: []string{apiserverv1alpha1.SchemeGroupVersion.Group},
-				Resources: []string{rbacv1.ResourceAll},
-			},
-		},
-	}
-	crolebinding := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "bulward:test-visible-filtering",
-		},
-		RoleRef: rbacv1.RoleRef{
-			Name: crole.Name,
-			Kind: "ClusterRole",
-		},
-	}
-	for _, tc := range testCase {
-		crolebinding.Subjects = append(crolebinding.Subjects, tc.Subject)
-	}
-	require.NoError(t, cl.EnsureCreated(ctx, crole))
-	require.NoError(t, cl.EnsureCreated(ctx, crolebinding))
 }

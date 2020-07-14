@@ -21,6 +21,12 @@ SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
 VERSION = v1
 
+# Debug BUILD_ARGS
+# BUILD_ARGS?=-gcflags "all=-N -l"
+# sudo dlv attach --headless=true -l localhost:9060 --api-version=2 --accept-multiclient  --only-same-user=false <PID>
+# <PID> could be find via pgrep e.g. $(pgrep apiserver -n)
+BUILD_ARGS?=
+
 export CGO_ENABLED:=0
 
 ifdef CI
@@ -40,7 +46,7 @@ bin/windows_amd64/%: GOARGS = GOOS=windows GOARCH=amd64
 
 bin/%:
 	$(eval COMPONENT=$(shell basename $*))
-	$(GOARGS) go build  -o bin/$* cmd/$(COMPONENT)/main.go
+	$(GOARGS) go build $(BUILD_ARGS) -o bin/$* cmd/$(COMPONENT)/main.go
 
 # ---------------
 # Code Generators
