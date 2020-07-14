@@ -90,3 +90,20 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - storage.bulward.io
+  resources:
+  - projects
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - storage.bulward.io
+  resources:
+  - projects/status
+  verbs:
+  - get
+  - patch
+  - update

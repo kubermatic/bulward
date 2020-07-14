@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -183,30 +182,11 @@ func (r *OrganizationReconciler) reconcileMembers(ctx context.Context, log logr.
 	if err := r.List(ctx, rbs, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
 		return fmt.Errorf("list rolebindings: %w", err)
 	}
-	organization.Status.Members = r.extractSubjects(rbs)
+	organization.Status.Members = extractSubjects(rbs)
 	if err := r.Status().Update(ctx, organization); err != nil {
 		return fmt.Errorf("updating members: %w", err)
 	}
 	return nil
-}
-
-func (r *OrganizationReconciler) extractSubjects(rbs *rbacv1.RoleBindingList) []rbacv1.Subject {
-	var subjects []rbacv1.Subject
-	for _, rb := range rbs.Items {
-		subjects = append(subjects, rb.Subjects...)
-	}
-	sort.Slice(subjects, func(i, j int) bool {
-		a := subjects[i]
-		b := subjects[j]
-		return a.String() < b.String()
-	})
-	filteredSubjects := make([]rbacv1.Subject, 0, len(subjects))
-	for i := range subjects {
-		if i == 0 || subjects[i-1].String() != subjects[i].String() {
-			filteredSubjects = append(filteredSubjects, subjects[i])
-		}
-	}
-	return filteredSubjects
 }
 
 // checkOrganizationRoleTemplatesForOwners checks if the bulward pre-defined OrganizationRoleTemplates for Organization owners
