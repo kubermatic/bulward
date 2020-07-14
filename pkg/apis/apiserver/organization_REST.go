@@ -134,12 +134,8 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 	if err != nil {
 		return nil, err
 	}
-	visible, err := o.isMember(ctx, org)
-	if err != nil {
+	if err := o.checkMembership(ctx, org); err != nil {
 		return nil, err
-	}
-	if !visible {
-		return nil, apierrors.NewNotFound(qualifiedResource, name)
 	}
 	return org, nil
 }
@@ -185,7 +181,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	// here we're not using checkIsOwner since we're returning different error
+	// here we're not using checkOwnership since we're returning different error
 	isOwner, err := o.containsUser(ctx, org.Spec.Owners)
 	if err != nil {
 		return nil, err
@@ -234,7 +230,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 	if err := createValidation(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
-	if err := o.checkIsOwner(ctx, oldObj); err != nil {
+	if err := o.checkOwnership(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
 	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
@@ -274,7 +270,7 @@ func (o *OrganizationREST) Delete(ctx context.Context, name string, deleteValida
 	if err := deleteValidation(ctx, obj); err != nil {
 		return obj, false, err
 	}
-	if err := o.checkIsOwner(ctx, obj.(*Organization)); err != nil {
+	if err := o.checkOwnership(ctx, obj.(*Organization)); err != nil {
 		return nil, false, err
 	}
 	err = o.dynamicRI.Delete(ctx, name, *options)
@@ -287,7 +283,7 @@ func (o *OrganizationREST) DeleteCollection(ctx context.Context, deleteValidatio
 		return nil, err
 	}
 	for _, org := range orgs.(*OrganizationList).Items {
-		if err := o.checkIsOwner(ctx, &org); err != nil {
+		if err := o.checkOwnership(ctx, &org); err != nil {
 			return nil, err
 		}
 	}
@@ -360,17 +356,15 @@ func internalErrorWatchEvent(err error) watch.Event {
 	}
 }
 
-func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organization) error {
+// checkOwnership checks if the calling user is owner of the organization, and if not returns appropriate error:
+// NotFound if non-member, Forbidden if member
+func (o *OrganizationREST) checkOwnership(ctx context.Context, organization *Organization) error {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
 		return err
 	}
-	visible, err := o.isMember(ctx, organization)
-	if err != nil {
+	if err := o.checkMembership(ctx, organization); err != nil {
 		return err
-	}
-	if !visible {
-		return apierrors.NewNotFound(qualifiedResource, organization.Name)
 	}
 	isOwner, err := o.containsUser(ctx, organization.Spec.Owners)
 	if err != nil {
@@ -386,6 +380,19 @@ func (o *OrganizationREST) checkIsOwner(ctx context.Context, organization *Organ
 	return nil
 }
 
+// checkMembership checks if the calling user is organization member, and if not returns NotFound error
+func (o *OrganizationREST) checkMembership(ctx context.Context, organization *Organization) error {
+	visible, err := o.isMember(ctx, organization)
+	if err != nil {
+		return err
+	}
+	if !visible {
+		return apierrors.NewNotFound(qualifiedResource, organization.Name)
+	}
+	return nil
+}
+
+// isMember checks if the calling user is organization member
 func (o *OrganizationREST) isMember(ctx context.Context, organization *Organization) (bool, error) {
 	return o.containsUser(ctx,
 		append(
@@ -397,7 +404,7 @@ func (o *OrganizationREST) isMember(ctx context.Context, organization *Organizat
 	)
 }
 
-// containsUser function should only be called in the `isMember` and `isOwner`, not in the REST implementations, having `isMember` `containsUser` `checkIsOwner` all in REST operations just confuses people
+// containsUser checks whether the calling user is in the subject list
 func (o *OrganizationREST) containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
 	attrs, err := filters.GetAuthorizerAttributes(ctx)
 	if err != nil {
