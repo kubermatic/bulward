@@ -181,7 +181,9 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err := createValidation(ctx, obj); err != nil {
 		return nil, err
 	}
-	// here we're not using checkOwnership since we're returning different error
+	// Here we're not using checkOwnership since we're returning different error.
+	// User should always include himself/herself in the Owners list, otherwise, we return BadRequest error to
+	// indicate the request is invalid and cannot be processed.
 	isOwner, err := o.containsUser(ctx, org.Spec.Owners)
 	if err != nil {
 		return nil, err
