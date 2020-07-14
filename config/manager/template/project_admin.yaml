@@ -1,0 +1,22 @@
+apiVersion: bulward.io/v1alpha1
+kind: OrganizationRoleTemplate
+metadata:
+  name: project-admin
+spec:
+  bindTo:
+  - Owners
+  scopes:
+    - Organization
+  rules:
+  - apiGroups:
+    - apiserver.bulward.io
+    resources:
+    - projects
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete

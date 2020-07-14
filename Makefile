@@ -62,7 +62,8 @@ setup-cluster: require-docker
 
 deploy-manager: setup-cluster kind-load-manager
 	@echo "deploying manager"
-	@kubectl apply -k config/manager/default -o yaml --dry-run | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
+	# kubectl's kustomize version is older, and can not properly order the resources, and will create OrganizationRoleTemplate objects before CRD, so we use kustomize here.
+	@kustomize build config/manager/default | sed "s|quay.io/kubermatic/bulward-manager:v1|${IMAGE_ORG}/bulward-manager:${VERSION}|g" | kubectl apply -f -
 	kubectl wait --for=condition=available deployment/bulward-controller-manager -n bulward-system --timeout=120s
 
 deploy-apiserver: setup-cluster cert-manager kind-load-apiserver

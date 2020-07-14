@@ -1,0 +1,3 @@
+resources:
+- project_admin.yaml
+- rbac_admin.yaml

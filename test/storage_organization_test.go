@@ -33,7 +33,6 @@ import (
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/bulward/pkg/templates"
 )
 
 func init() {
@@ -49,6 +48,11 @@ func TestCoreOrganization(t *testing.T) {
 	require.NoError(t, err)
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
+
+	const (
+		projectAdminOrganizationRoleTemplateName = "bulward-project-admin"
+		rbacAdminOrganizationRoleTemplateName    = "bulward-rbac-admin"
+	)
 
 	owner := rbacv1.Subject{
 		Kind:     "User",
@@ -74,13 +78,13 @@ func TestCoreOrganization(t *testing.T) {
 
 	projectTemplate := &corev1alpha1.OrganizationRoleTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: templates.ProjectAdminOrganizationRoleTemplateName,
+			Name: projectAdminOrganizationRoleTemplateName,
 		},
 	}
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, projectTemplate))
 	rbacTemplate := &corev1alpha1.OrganizationRoleTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: templates.RBACAdminOrganizationRoleTemplateName,
+			Name: rbacAdminOrganizationRoleTemplateName,
 		},
 	}
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, rbacTemplate))
