@@ -42,6 +42,7 @@ func init() {
 }
 
 func TestCoreProject(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()
@@ -58,7 +59,7 @@ func TestCoreProject(t *testing.T) {
 		Name:     "Owner1",
 	}
 
-	prj := &storagev1alpha1.Project{
+	project := &storagev1alpha1.Project{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "core-project-test",
 			Namespace: "core-organization-test",
@@ -67,13 +68,13 @@ func TestCoreProject(t *testing.T) {
 			Owners: []rbacv1.Subject{owner},
 		},
 	}
-	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, prj))
+	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, project))
 	require.NoError(t, cl.Create(ctx, ns))
-	require.NoError(t, cl.Create(ctx, prj))
-	require.NoError(t, testutil.WaitUntilReady(ctx, cl, prj))
+	require.NoError(t, cl.Create(ctx, project))
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, project))
 
 	projectNs := &corev1.Namespace{}
-	projectNs.Name = fmt.Sprintf("%s%s%s", prj.Namespace, "-bulward-", prj.Name)
+	projectNs.Name = fmt.Sprintf("%s-%s", project.Namespace, project.Name)
 	require.NoError(t, testutil.WaitUntilFound(ctx, cl, projectNs))
 
 	rbacSubject := rbacv1.Subject{
@@ -94,15 +95,15 @@ func TestCoreProject(t *testing.T) {
 		},
 	}
 	require.NoError(t, cl.Create(ctx, rb))
-	require.NoError(t, cl.WaitUntil(ctx, prj, func() (done bool, err error) {
-		if len(prj.Status.Members) == 1 {
-			assert.Contains(t, prj.Status.Members, rbacSubject)
+	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
+		if len(project.Status.Members) == 1 {
+			assert.Contains(t, project.Status.Members, rbacSubject)
 			return true, nil
 		}
 		return false, nil
-	}))
+	}), "project didnt reconcile added member")
 	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, rb))
-	require.NoError(t, cl.WaitUntil(ctx, prj, func() (done bool, err error) {
-		return len(prj.Status.Members) == 0, nil
-	}), "organization owner can not remove organization member")
+	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
+		return len(project.Status.Members) == 0, nil
+	}), "project didnt reconcile removed member")
 }

@@ -109,11 +109,12 @@ func run(flags *flags, log logr.Logger) error {
 		return fmt.Errorf("creating OrganizationRoleTemplate controller: %w", err)
 	}
 
+	projectLogger := log.WithName("controllers").WithName("Project")
 	if err = (&controllers.ProjectReconciler{
 		Client: mgr.GetClient(),
-		Log:    log.WithName("controllers").WithName("Project"),
+		Log:    projectLogger,
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, projectLogger); err != nil {
 		return fmt.Errorf("creating Project controller: %w", err)
 	}
 

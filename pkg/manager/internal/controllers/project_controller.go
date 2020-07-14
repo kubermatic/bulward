@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -35,8 +34,6 @@ import (
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 	"github.com/kubermatic/utils/pkg/owner"
 )
-
-const projectNamespaceNameSeparator = "-bulward-"
 
 // ProjectReconciler reconciles a Project object
 type ProjectReconciler struct {
@@ -83,7 +80,7 @@ func (r *ProjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (r *ProjectReconciler) reconcileNamespace(ctx context.Context, log logr.Logger, project *storagev1alpha1.Project) error {
 	ns := &corev1.Namespace{}
-	ns.Name = generateProjectNamespaceName(project.Namespace, project.Name)
+	ns.Name = fmt.Sprintf("%s-%s", project.Namespace, project.Name)
 
 	if _, err := owner.ReconcileOwnedObjects(ctx, r.Client, log, r.Scheme, project, []runtime.Object{ns}, &corev1.Namespace{}, nil); err != nil {
 		return fmt.Errorf("cannot reconcile namespace: %w", err)
@@ -113,39 +110,24 @@ func (r *ProjectReconciler) reconcileMembers(ctx context.Context, project *stora
 	return nil
 }
 
-// Project Namespace name is organization_name-separator-project_name
-func generateProjectNamespaceName(organizatioName, projectName string) string {
-	return fmt.Sprintf("%s%s%s", organizatioName, projectNamespaceNameSeparator, projectName)
-}
-
-// Project Namespace name is organization_name-separator-project_name
-func deconstructProjectNamespaceName(projectNamespaceName string) (string, string, error) {
-	split := strings.Split(projectNamespaceName, projectNamespaceNameSeparator)
-	if len(split) != 2 {
-		return "", "", fmt.Errorf("not a valid project namespace name to deconstruct: %s", projectNamespaceName)
-	}
-
-	return split[0], split[1], nil
-}
-
-func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	enqueuer := owner.EnqueueRequestForOwner(&storagev1alpha1.Project{}, mgr.GetScheme())
+func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager, log logr.Logger) error {
+	enqueuer := owner.EnqueueRequestForOwner(&storagev1alpha1.Project{}, mgr.GetScheme()).(*handler.EnqueueRequestsFromMapFunc)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&storagev1alpha1.Project{}).
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
 		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-				org, pro, err := deconstructProjectNamespaceName(object.Meta.GetNamespace())
-				if err != nil {
+				ctx := context.Background()
+				ns := &corev1.Namespace{}
+				if err := r.Client.Get(ctx, types.NamespacedName{Name: object.Meta.GetNamespace()}, ns); err != nil {
+					log.Error(err, fmt.Sprintf("failed to get rolebinding namespace %q", object.Meta.GetNamespace()))
 					return []reconcile.Request{}
 				}
-				return []reconcile.Request{{
-					NamespacedName: types.NamespacedName{
-						Name:      pro,
-						Namespace: org,
-					},
-				}}
+				return enqueuer.ToRequests.Map(handler.MapObject{
+					Meta:   ns,
+					Object: ns,
+				})
 			}),
 		}).
 		Complete(r)
