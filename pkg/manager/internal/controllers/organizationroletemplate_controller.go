@@ -106,17 +106,19 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			}
 
 			for _, project := range projects.Items {
-				if project.IsReady() {
-					if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
-						return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
-					}
-					targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
-						Kind:               project.Kind,
-						APIGroup:           project.GroupVersionKind().Group,
-						Name:               project.Name,
-						ObservedGeneration: project.Status.ObservedGeneration,
-					})
+				if !project.IsReady() {
+					// skip Unready Projects.
+					continue
 				}
+				if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
+					return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
+				}
+				targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+					Kind:               project.Kind,
+					APIGroup:           project.GroupVersionKind().Group,
+					Name:               project.Name,
+					ObservedGeneration: project.Status.ObservedGeneration,
+				})
 			}
 		}
 	}
