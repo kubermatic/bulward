@@ -51,6 +51,7 @@ type OrganizationReconciler struct {
 
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=get;list;watch
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=create
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
@@ -109,19 +110,21 @@ func (r *OrganizationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 }
 
 func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	enqueuer := owner.EnqueueRequestForOwner(&storagev1alpha1.Organization{}, mgr.GetScheme())
+	enqueuerForOwner := owner.EnqueueRequestForOwner(&storagev1alpha1.Organization{}, mgr.GetScheme())
+	enqueuerByNamespace := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+			return []reconcile.Request{{
+				// Organization name is its namespace
+				NamespacedName: types.NamespacedName{Name: object.Meta.GetNamespace()},
+			}}
+		}),
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&storagev1alpha1.Organization{}).
-		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuer).
-		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-				return []reconcile.Request{{
-					// Organization name is its namespace
-					NamespacedName: types.NamespacedName{Name: object.Meta.GetNamespace()},
-				}}
-			}),
-		}).
+		Watches(&source.Kind{Type: &corev1.Namespace{}}, enqueuerForOwner).
+		Watches(&source.Kind{Type: &rbacv1.RoleBinding{}}, enqueuerByNamespace).
+		Watches(&source.Kind{Type: &storagev1alpha1.Project{}}, enqueuerByNamespace).
 		Complete(r)
 }
 
@@ -177,11 +180,25 @@ func (r *OrganizationReconciler) reconcileNamespace(ctx context.Context, log log
 }
 
 func (r *OrganizationReconciler) reconcileMembers(ctx context.Context, log logr.Logger, organization *storagev1alpha1.Organization) error {
+	var subjects []rbacv1.Subject
 	rbs := &rbacv1.RoleBindingList{}
 	if err := r.List(ctx, rbs, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
 		return fmt.Errorf("list rolebindings: %w", err)
 	}
-	organization.Status.Members = extractSubjects(rbs)
+	for _, roleBinding := range rbs.Items {
+		subjects = append(subjects, roleBinding.Subjects...)
+	}
+	// Propagate members of Project under this Organization.
+	projects := &storagev1alpha1.ProjectList{}
+	if err := r.List(ctx, projects, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
+		return fmt.Errorf("list Projects: %w", err)
+	}
+	for _, project := range projects.Items {
+		if project.IsReady() {
+			subjects = append(subjects, project.Status.Members...)
+		}
+	}
+	organization.Status.Members = extractSubjects(subjects)
 	if err := r.Status().Update(ctx, organization); err != nil {
 		return fmt.Errorf("updating members: %w", err)
 	}

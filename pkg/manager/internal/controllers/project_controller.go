@@ -121,7 +121,11 @@ func (r *ProjectReconciler) reconcileMembers(ctx context.Context, project *stora
 	if err := r.List(ctx, rbs, client.InNamespace(project.Status.Namespace.Name)); err != nil {
 		return fmt.Errorf("list rolebindings: %w", err)
 	}
-	project.Status.Members = extractSubjects(rbs)
+	var subjects []rbacv1.Subject
+	for _, roleBinding := range rbs.Items {
+		subjects = append(subjects, roleBinding.Subjects...)
+	}
+	project.Status.Members = extractSubjects(subjects)
 	if err := r.Status().Update(ctx, project); err != nil {
 		return fmt.Errorf("updating members: %w", err)
 	}
