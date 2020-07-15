@@ -18,6 +18,7 @@ package test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,25 +51,24 @@ func TestCoreOrganization(t *testing.T) {
 	cl := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
-	owner := rbacv1.Subject{
+	organizationOwner := rbacv1.Subject{
 		Kind:     "User",
 		APIGroup: "rbac.authorization.k8s.io",
-		Name:     "Owner1",
+		Name:     "Organization Owner",
 	}
 
 	org := &storagev1alpha1.Organization{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "core-organization-test",
+			Name: strings.ToLower(t.Name()),
 		},
 		Spec: storagev1alpha1.OrganizationSpec{
 			Metadata: &storagev1alpha1.OrganizationMetadata{
 				DisplayName: "berlin",
 				Description: "a humble organization of German capital",
 			},
-			Owners: []rbacv1.Subject{owner},
+			Owners: []rbacv1.Subject{organizationOwner},
 		},
 	}
-	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, org))
 	require.NoError(t, cl.Create(ctx, org))
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, org))
 
@@ -87,7 +87,47 @@ func TestCoreOrganization(t *testing.T) {
 	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
 		if len(org.Status.Members) > 0 {
 			assert.Len(t, org.Status.Members, 1)
-			assert.Equal(t, org.Status.Members[0].Name, owner.Name)
+			assert.Equal(t, org.Status.Members[0].Name, organizationOwner.Name)
+			return true, nil
+		}
+		return false, nil
+	}))
+
+	projectOwner := rbacv1.Subject{
+		Kind:     "User",
+		APIGroup: "rbac.authorization.k8s.io",
+		Name:     "Project Owner",
+	}
+
+	project := &storagev1alpha1.Project{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "core-project-test",
+			Namespace: org.Status.Namespace.Name,
+		},
+		Spec: storagev1alpha1.ProjectSpec{
+			Owners: []rbacv1.Subject{projectOwner},
+		},
+	}
+	require.NoError(t, cl.Create(ctx, project))
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, project))
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "project-owner-rb",
+			Namespace: project.Status.Namespace.Name,
+		},
+		Subjects: []rbacv1.Subject{projectOwner},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     "role",
+		},
+	}
+	require.NoError(t, cl.Create(ctx, rb))
+	t.Log("Project Member should also present in the Member list of the Organization")
+	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
+		if len(org.Status.Members) == 2 {
+			assert.Contains(t, org.Status.Members, projectOwner)
 			return true, nil
 		}
 		return false, nil
@@ -95,7 +135,7 @@ func TestCoreOrganization(t *testing.T) {
 
 	t.Log("Organization Owner has permission to create RoleBinding")
 	cfg.Impersonate = rest.ImpersonationConfig{
-		UserName: owner.Name,
+		UserName: organizationOwner.Name,
 	}
 	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(ownerClient.CleanUpFunc(ctx))
@@ -104,7 +144,7 @@ func TestCoreOrganization(t *testing.T) {
 		APIGroup: "rbac.authorization.k8s.io",
 		Name:     "User1",
 	}
-	rb := &rbacv1.RoleBinding{
+	rb = &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "user1-rb",
 			Namespace: org.Status.Namespace.Name,
@@ -118,7 +158,7 @@ func TestCoreOrganization(t *testing.T) {
 	}
 	require.NoError(t, ownerClient.Create(ctx, rb))
 	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		if len(org.Status.Members) == 2 {
+		if len(org.Status.Members) == 3 {
 			assert.Contains(t, org.Status.Members, rbacSubject)
 			return true, nil
 		}
@@ -126,6 +166,6 @@ func TestCoreOrganization(t *testing.T) {
 	}))
 	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, ownerClient, rb))
 	require.NoError(t, cl.WaitUntil(ctx, org, func() (done bool, err error) {
-		return len(org.Status.Members) == 1, nil
+		return len(org.Status.Members) == 2, nil
 	}), "organization owner can not remove organization member")
 }
