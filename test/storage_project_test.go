@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kubermatic/utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,6 @@ import (
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 func init() {
@@ -106,4 +106,7 @@ func TestCoreProject(t *testing.T) {
 	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
 		return len(project.Status.Members) == 0, nil
 	}), "project didnt reconcile removed member")
+
+	require.NoError(t, cl.Delete(ctx, project))
+	require.NoError(t, cl.WaitUntilNotFound(ctx, projectNs), "Project namespace has not been cleaned up")
 }
