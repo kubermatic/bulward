@@ -1,1 +1,0 @@
-./hack/boilerplate/boilerplate.go.txt
