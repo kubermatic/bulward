@@ -31,8 +31,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/kubermatic/utils/pkg/util"
+
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
 	"github.com/kubermatic/utils/pkg/owner"
+)
+
+const (
+	projectControllerFinalizer string = "project.bulward.io/controller"
 )
 
 // ProjectReconciler reconciles a Project object
@@ -53,6 +59,19 @@ func (r *ProjectReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	project := &storagev1alpha1.Project{}
 	if err := r.Get(ctx, req.NamespacedName, project); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if !project.DeletionTimestamp.IsZero() {
+		if err := r.handleDeletion(ctx, log, project); err != nil {
+			return ctrl.Result{}, fmt.Errorf("handling deletion: %w", err)
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if util.AddFinalizer(project, projectControllerFinalizer) {
+		if err := r.Update(ctx, project); err != nil {
+			return ctrl.Result{}, fmt.Errorf("updating finalizers: %w", err)
+		}
 	}
 
 	if err := r.reconcileNamespace(ctx, log, project); err != nil {
@@ -130,4 +149,36 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}),
 		}).
 		Complete(r)
+}
+
+// handleDeletion handles the deletion of the Project object:
+func (r *ProjectReconciler) handleDeletion(ctx context.Context, log logr.Logger, project *storagev1alpha1.Project) error {
+	// Update the Project Status to Terminating.
+	readyCondition, _ := project.Status.GetCondition(storagev1alpha1.ProjectReady)
+	if readyCondition.Status != storagev1alpha1.ConditionFalse ||
+		readyCondition.Status == storagev1alpha1.ConditionFalse && readyCondition.Reason != storagev1alpha1.ProjectTerminatingReason {
+		project.Status.ObservedGeneration = project.Generation
+		project.Status.SetCondition(storagev1alpha1.ProjectCondition{
+			Type:    storagev1alpha1.ProjectReady,
+			Status:  storagev1alpha1.ConditionFalse,
+			Reason:  storagev1alpha1.ProjectTerminatingReason,
+			Message: "Project is being terminated",
+		})
+		if err := r.Status().Update(ctx, project); err != nil {
+			return fmt.Errorf("updating Project status: %w", err)
+		}
+	}
+
+	cleanedUp, err := util.DeleteObjects(ctx, r.Client, r.Scheme, []runtime.Object{
+		&corev1.Namespace{},
+	}, owner.OwnedBy(project, r.Scheme))
+	if err != nil {
+		return fmt.Errorf("DeleteObjects: %w", err)
+	}
+	if cleanedUp && util.RemoveFinalizer(project, projectControllerFinalizer) {
+		if err := r.Update(ctx, project); err != nil {
+			return fmt.Errorf("updating Project Status: %w", err)
+		}
+	}
+	return nil
 }

@@ -106,4 +106,7 @@ func TestCoreProject(t *testing.T) {
 	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
 		return len(project.Status.Members) == 0, nil
 	}), "project didnt reconcile removed member")
+
+	require.NoError(t, cl.Delete(ctx, project))
+	require.NoError(t, cl.WaitUntilNotFound(ctx, projectNs), "Project namespace has not been cleaned up")
 }
