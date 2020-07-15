@@ -68,12 +68,13 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 	}
 
 	var targets []corev1alpha1.OrganizationRoleTemplateTarget
-	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
-		organizations := &storagev1alpha1.OrganizationList{}
-		if err := r.Client.List(ctx, organizations); err != nil {
-			return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
-		}
+	organizations := &storagev1alpha1.OrganizationList{}
+	if err := r.Client.List(ctx, organizations); err != nil {
+		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
+	}
 
+	// Reconcile Role/RoleBindings in Organization namespaces.
+	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
 		for _, organization := range organizations.Items {
 			if !organization.IsReady() {
 				// skip Unready Organizations.
@@ -89,25 +90,32 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 				ObservedGeneration: organization.Status.ObservedGeneration,
 			})
 
-			// Reconcile Role/RoleBindings in Project namespaces.
-			if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeProject) {
-				projects := &storagev1alpha1.ProjectList{}
-				if err := r.Client.List(ctx, projects, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
-					return ctrl.Result{}, fmt.Errorf("listing Projects: %w", err)
-				}
+		}
+	}
 
-				for _, project := range projects.Items {
-					if project.IsReady() {
-						if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
-							return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
-						}
-						targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
-							Kind:               project.Kind,
-							APIGroup:           project.GroupVersionKind().Group,
-							Name:               project.Name,
-							ObservedGeneration: project.Status.ObservedGeneration,
-						})
+	// Reconcile Role/RoleBindings in Project namespaces.
+	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeProject) {
+		for _, organization := range organizations.Items {
+			if !organization.IsReady() {
+				// skip Unready Organizations.
+				continue
+			}
+			projects := &storagev1alpha1.ProjectList{}
+			if err := r.Client.List(ctx, projects, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
+				return ctrl.Result{}, fmt.Errorf("listing Projects: %w", err)
+			}
+
+			for _, project := range projects.Items {
+				if project.IsReady() {
+					if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
+						return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
 					}
+					targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+						Kind:               project.Kind,
+						APIGroup:           project.GroupVersionKind().Group,
+						Name:               project.Name,
+						ObservedGeneration: project.Status.ObservedGeneration,
+					})
 				}
 			}
 		}
