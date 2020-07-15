@@ -63,6 +63,7 @@ func RBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate 
 		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
 			Scopes: []corev1alpha1.RoleTemplateScope{
 				corev1alpha1.RoleTemplateScopeOrganization,
+				corev1alpha1.RoleTemplateScopeProject,
 			},
 			BindTo: []corev1alpha1.BindingType{
 				corev1alpha1.BindToOwners,

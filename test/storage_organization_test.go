@@ -42,7 +42,7 @@ func init() {
 	utilruntime.Must(storagev1alpha1.AddToScheme(testScheme))
 }
 
-func TestCoreOrganization(t *testing.T) {
+func TestStorageOrganization(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()

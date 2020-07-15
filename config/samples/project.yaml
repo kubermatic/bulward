@@ -1,0 +1,10 @@
+apiVersion: storage.bulward.io/v1alpha1
+kind: Project
+metadata:
+  name: project-a
+  namespace: organization-a
+spec:
+  owners:
+    - kind: User
+      name: user1
+      apiGroup: rbac.authorization.k8s.io
