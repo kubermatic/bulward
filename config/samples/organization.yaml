@@ -3,6 +3,9 @@ kind: Organization
 metadata:
   name: organization-a
 spec:
+  metadata:
+    displayName: The A Organization
+    description: I am the first orgainzation of Bulward.
   owners:
   - kind: User
     name: owner
