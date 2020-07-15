@@ -30,9 +30,10 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 
+	"github.com/kubermatic/utils/pkg/testutil"
+
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/utils/pkg/testutil"
 )
 
 func init() {
