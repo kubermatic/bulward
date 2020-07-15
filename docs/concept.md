@@ -18,6 +18,7 @@ KubeCarrier is currently offloading all RBAC and user management into Kubernetes
 4. Audit Logging (Kubernetes Knows the real user)
 5. Users can manage custom Roles within their Organizations/Projects
 6. Users can not orphan a project or Organization (leave a project/organization without owners)
+7. Organization names are unique per bulward installation. The project names are unique per organization.
 
 ## Features
 
@@ -38,13 +39,6 @@ Other users are managed via `RoleBindings`.
 ### Users can not orphan a project or Organization
 
 Owner permissions are reconciled, if deleted or altered. A validating webhook will prevent the last owner of an Organization or Project from being removed.
-
-### Organization names can be set by end user
-
-As Organizations are kind-a Cluster-Scoped, users cannot set their own object name, or they can run into name conflicts with objects they cannot even see.
-
-To solve this, the cluster scoped `InternalOrganization` object is always using `generateName` and gets a `bulward.io/name` label with the original object name.
-The extension apiserver will expose `Organization` objects with the original name, making this nontransparent to the APIs user.
 
 ### Extensible Default Roles for Organizations and Projects
 
@@ -330,16 +324,6 @@ status:
 ### Orchestrating Projects across clusters
 
 Kubermatic is working across multiple Seed Clusters and the same namespace isolation needs to be setup in these Seed Clusters in order for us to fully utilize this project in Kubermatic.
-
-### Cleanup/Revoke permissions removed from Template
-
-Users can create their own `Roles` and bind them to users `RoleBinding` as long as they don't exceed their own permission level (escalate is not allowed).
-
-Although if permissions are removed from the `OrganizationRoleTemplates` or `ProjectRoleTemplate` custom Roles are unaltered (as they are not tracked by the system), so Users may retain access.
-
-**Possible Solution**
-
-A solution to solve this, could be a custom controller altering user created roles (and removing rules that are revoked in the template via an intersect). This would also prevent users from creating `Roles` with rules that they are not allowed to bind to.
 
 ## Feature Considerations
 
