@@ -70,12 +70,12 @@ func RBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate 
 			},
 			Rules: []rbacv1.PolicyRule{
 				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
+					APIGroups: []string{rbacv1.GroupName},
 					Resources: []string{"roles"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},
 				},
 				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
+					APIGroups: []string{rbacv1.GroupName},
 					Resources: []string{"rolebindings"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},

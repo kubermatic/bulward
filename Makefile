@@ -21,6 +21,13 @@ SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
 VERSION = v1
 
+# Dev Image to use
+# Always bump this version, when changing ANY component version below.
+DEV_IMAGE_TAG=v1
+# Versions used to build DEV image:
+export CONTROLLER_GEN_VERSION=0.2.9
+export APISERVER_BUILDER_VERSION=1.18.0
+
 # Debug BUILD_ARGS
 # BUILD_ARGS?=-gcflags "all=-N -l"
 # sudo dlv attach --headless=true -l localhost:9060 --api-version=2 --accept-multiclient  --only-same-user=false <PID>
@@ -54,10 +61,23 @@ bin/%:
 
 # This should only be executed once the new crd is added in the apiserver api group.
 generate-apiregister:
+ifdef CI
 	apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --input-dirs github.com/kubermatic/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
+else
+	@docker run --rm -e CI=true -w /src -v $(PWD):/src --user "$(id -u):$(id -g)" \
+		--user "$(id -u):$(id -g)"
+		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
+		make generate-apiregister
+endif
 
 generate:
+ifdef CI
 	@hack/codegen.sh
+else
+	@docker run --rm -e CI=true -w /src -v $(PWD):/src --user "$(id -u):$(id -g)" \
+		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
+		make generate
+endif
 
 setup-cluster: require-docker
 	@mkdir -p /tmp/bulward-hack
@@ -152,6 +172,17 @@ build-image-test: require-docker
 push-image-test: build-image-test require-docker
 	@docker push ${IMAGE_ORG}/bulward-test
 	@echo pushed ${IMAGE_ORG}/bulward-test
+
+build-image-dev: require-docker
+	@mkdir -p bin/image/dev
+	@cp -a config/dockerfiles/dev.Dockerfile bin/image/dev/Dockerfile
+	@docker build -t ${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} bin/image/dev \
+		--build-arg CONTROLLER_GEN_VERSION=${CONTROLLER_GEN_VERSION} \
+		--build-arg APISERVER_BUILDER_VERSION=${APISERVER_BUILDER_VERSION}
+
+push-image-dev: build-image-dev
+	@docker push ${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG}
+	@echo pushed ${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG}
 
 # -------
 # Cleanup

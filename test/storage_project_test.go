@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kubermatic/utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +32,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-
-	"github.com/kubermatic/utils/pkg/testutil"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
@@ -55,8 +54,8 @@ func TestStorageProject(t *testing.T) {
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	organizationOwner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "Organization Owner",
 	}
 
@@ -89,8 +88,8 @@ func TestStorageProject(t *testing.T) {
 	require.NoError(t, testutil.WaitUntilReady(ctx, cl, rbacTemplate))
 
 	projectOwner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "Project Owner",
 	}
 
@@ -130,10 +129,9 @@ func TestStorageProject(t *testing.T) {
 		UserName: organizationOwner.Name,
 	}
 	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
-	t.Cleanup(ownerClient.CleanUpFunc(ctx))
 	rbacSubject := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "User1",
 	}
 	rb := &rbacv1.RoleBinding{
@@ -143,7 +141,7 @@ func TestStorageProject(t *testing.T) {
 		},
 		Subjects: []rbacv1.Subject{rbacSubject},
 		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbacv1.GroupName,
 			Kind:     "Role",
 			Name:     rbacTemplate.Name,
 		},
@@ -162,4 +160,7 @@ func TestStorageProject(t *testing.T) {
 	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
 		return len(project.Status.Members) == 1, nil
 	}), "project didnt reconcile removed member")
+
+	require.NoError(t, cl.Delete(ctx, project))
+	require.NoError(t, cl.WaitUntilNotFound(ctx, projectNs), "Project namespace has not been cleaned up")
 }

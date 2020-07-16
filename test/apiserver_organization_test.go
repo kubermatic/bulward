@@ -64,8 +64,8 @@ func TestAPIServerOrganization(t *testing.T) {
 	require.NoError(t, err)
 	description := "I'm a little test organization from Berlin."
 	owner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "kubernetes-admin",
 	}
 	org := &apiserverv1alpha1.Organization{
@@ -156,8 +156,8 @@ func TestVisibleFiltering(t *testing.T) {
 	t.Cleanup(globalEventTraced.TestCleanupFunc(t))
 
 	owner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "kubernetes-admin",
 	}
 	testCase := []*TestVisibleFilteringTestCase{

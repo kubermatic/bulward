@@ -22,11 +22,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-func extractSubjects(rbs *rbacv1.RoleBindingList) []rbacv1.Subject {
-	var subjects []rbacv1.Subject
-	for _, rb := range rbs.Items {
-		subjects = append(subjects, rb.Subjects...)
-	}
+func extractSubjects(subjects []rbacv1.Subject) []rbacv1.Subject {
 	sort.Slice(subjects, func(i, j int) bool {
 		a := subjects[i]
 		b := subjects[j]

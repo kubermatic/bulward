@@ -97,7 +97,6 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeProject) {
 		for _, organization := range organizations.Items {
 			if !organization.IsReady() {
-				// skip Unready Organizations.
 				continue
 			}
 			projects := &storagev1alpha1.ProjectList{}
@@ -107,7 +106,6 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 
 			for _, project := range projects.Items {
 				if !project.IsReady() {
-					// skip Unready Projects.
 					continue
 				}
 				if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
@@ -217,7 +215,7 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx co
 			},
 			Subjects: organization.Spec.Owners,
 			RoleRef: rbacv1.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
+				APIGroup: rbacv1.GroupName,
 				Kind:     "Role",
 				Name:     role.Name,
 			},
@@ -252,7 +250,7 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForProject(ctx context
 			// Here we are creating RoleBindings for Organization Owner, not Project Owner, since OrganizationRoleTemplate is used to config permissions of Organization Owners.
 			Subjects: organization.Spec.Owners,
 			RoleRef: rbacv1.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
+				APIGroup: rbacv1.GroupName,
 				Kind:     "Role",
 				Name:     role.Name,
 			},
