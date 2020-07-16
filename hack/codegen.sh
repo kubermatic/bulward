@@ -15,6 +15,7 @@
 # limitations under the License.
 
 set -euo pipefail
+set -x
 
 if [ -z $(go env GOBIN) ]; then
 GOBIN=$(go env GOPATH)/bin
@@ -37,8 +38,8 @@ if [[  ${CONTROLLER_GEN_VERSION} != "${CONTROLLER_GEN_WANT_VERSION}" ]]; then
   exit 1
 fi
 
-APISERVER_BOOT=$(which apiserver-boot)
 CRD_VERSION="v1"
+HEADER_FILE=./hack/boilerplate/boilerplate.go.txt
 
 # Manager
 # -------
@@ -57,9 +58,27 @@ $CONTROLLER_GEN rbac:roleName=manager-role paths="./pkg/apiserver/..." output:rb
 # Generators for API extension server.
 export GOROOT=$(go env GOROOT)
 # We don't want to generate zz_generated.defaults.go for core api group.
-defaulter-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver --go-header-file ./hack/boilerplate/boilerplate.go.txt
-openapi-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 --input-dirs github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1 --go-header-file ./hack/boilerplate/boilerplate.go.txt -i k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1 --output-package github.com/kubermatic/bulward/pkg/openapi
-$APISERVER_BOOT build generated  --generator conversion
+defaulter-gen \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver \
+  --go-header-file ${HEADER_FILE}
+openapi-gen \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1 \
+  --input-dirs k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/api/resource,k8s.io/apimachinery/pkg/version,k8s.io/apimachinery/pkg/runtime,k8s.io/apimachinery/pkg/util/intstr,k8s.io/api/core/v1,k8s.io/api/apps/v1,k8s.io/api/rbac/v1 \
+  --go-header-file ${HEADER_FILE} \
+  --output-package github.com/kubermatic/bulward/pkg/openapi
+conversion-gen \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1 \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/core/v1alpha1 \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1 \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/core \
+  --input-dirs github.com/kubermatic/bulward/pkg/apis/storage \
+  --extra-peer-dirs k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/conversion,k8s.io/apimachinery/pkg/runtime \
+  --go-header-file ${HEADER_FILE} \
+  -O zz_generated.conversion
+
 rm -Rf ./plugin
 goimports -local github.com/kubermatic -w .
 
