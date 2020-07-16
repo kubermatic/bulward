@@ -27,6 +27,8 @@ RUN apt-get -qq update && \
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 ENV PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin
+# this GOROOT ENV is needed for apiregister-gen.
+ENV GOROOT=/usr/local/go
 
 # versions without the `v` prefix
 ARG APISERVER_BUILDER_VERSION

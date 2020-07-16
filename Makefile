@@ -63,9 +63,12 @@ bin/%:
 generate-apiregister:
 ifdef CI
 	apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --input-dirs github.com/kubermatic/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
+	@rm -Rf ./plugin
 else
-	@docker run --rm -e CI=true -w /src -v $(PWD):/src --user "$(id -u):$(id -g)" \
-		--user "$(id -u):$(id -g)"
+	@docker run --rm -e CI=true \
+		-w /go/src/github.com/kubermatic/bulward \
+		-v $(PWD):/go/src/github.com/kubermatic/bulward \
+		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate-apiregister
 endif
@@ -74,7 +77,10 @@ generate:
 ifdef CI
 	@hack/codegen.sh
 else
-	@docker run --rm -e CI=true -w /src -v $(PWD):/src --user "$(id -u):$(id -g)" \
+	@docker run --rm -e CI=true \
+		-w /go/src/github.com/kubermatic/bulward \
+		-v $(PWD):/go/src/github.com/kubermatic/bulward \
+		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate
 endif
