@@ -63,18 +63,19 @@ func RBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate 
 		Spec: corev1alpha1.OrganizationRoleTemplateSpec{
 			Scopes: []corev1alpha1.RoleTemplateScope{
 				corev1alpha1.RoleTemplateScopeOrganization,
+				corev1alpha1.RoleTemplateScopeProject,
 			},
 			BindTo: []corev1alpha1.BindingType{
 				corev1alpha1.BindToOwners,
 			},
 			Rules: []rbacv1.PolicyRule{
 				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
+					APIGroups: []string{rbacv1.GroupName},
 					Resources: []string{"roles"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},
 				},
 				{
-					APIGroups: []string{"rbac.authorization.k8s.io"},
+					APIGroups: []string{rbacv1.GroupName},
 					Resources: []string{"rolebindings"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kubermatic/utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -29,8 +30,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-
-	"github.com/kubermatic/utils/pkg/testutil"
 
 	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
@@ -43,7 +42,7 @@ func init() {
 	utilruntime.Must(storagev1alpha1.AddToScheme(testScheme))
 }
 
-func TestCoreOrganization(t *testing.T) {
+func TestStorageOrganization(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	cfg, err := controllerruntime.GetConfig()
@@ -52,8 +51,8 @@ func TestCoreOrganization(t *testing.T) {
 	t.Cleanup(cl.CleanUpFunc(ctx))
 
 	organizationOwner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "Organization Owner",
 	}
 
@@ -94,8 +93,8 @@ func TestCoreOrganization(t *testing.T) {
 	}))
 
 	projectOwner := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "Project Owner",
 	}
 
@@ -118,7 +117,7 @@ func TestCoreOrganization(t *testing.T) {
 		},
 		Subjects: []rbacv1.Subject{projectOwner},
 		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbacv1.GroupName,
 			Kind:     "Role",
 			Name:     "role",
 		},
@@ -140,8 +139,8 @@ func TestCoreOrganization(t *testing.T) {
 	ownerClient := testutil.NewRecordingClient(t, cfg, testScheme, testutil.CleanUpStrategy(cleanUpStrategy))
 	t.Cleanup(ownerClient.CleanUpFunc(ctx))
 	rbacSubject := rbacv1.Subject{
-		Kind:     "User",
-		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     rbacv1.UserKind,
+		APIGroup: rbacv1.GroupName,
 		Name:     "User1",
 	}
 	rb = &rbacv1.RoleBinding{
@@ -151,7 +150,7 @@ func TestCoreOrganization(t *testing.T) {
 		},
 		Subjects: []rbacv1.Subject{rbacSubject},
 		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
+			APIGroup: rbacv1.GroupName,
 			Kind:     "Role",
 			Name:     rbacTemplate.Name,
 		},

@@ -46,6 +46,7 @@ type OrganizationRoleTemplateReconciler struct {
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=get;list;watch;update
 // The following permission of apiserver.bulward.io is needed for service account to create role for owner to access projects.
 // +kubebuilder:rbac:groups=apiserver.bulward.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete;bind
@@ -66,23 +67,57 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
+	var targets []corev1alpha1.OrganizationRoleTemplateTarget
 	organizations := &storagev1alpha1.OrganizationList{}
 	if err := r.Client.List(ctx, organizations); err != nil {
 		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
 	}
 
-	var targets []corev1alpha1.OrganizationRoleTemplateTarget
-	for _, organization := range organizations.Items {
-		if organization.IsReady() {
+	// Reconcile Role/RoleBindings in Organization namespaces.
+	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
+		for _, organization := range organizations.Items {
+			if !organization.IsReady() {
+				// skip Unready Organizations.
+				continue
+			}
 			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
-				return ctrl.Result{}, fmt.Errorf("reconcling Organization Role: %w", err)
+				return ctrl.Result{}, fmt.Errorf("reconcling Organization RBAC: %w", err)
 			}
 			targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
 				Kind:               organization.Kind,
-				APIGroup:           "storage.bulward.io",
+				APIGroup:           organization.GroupVersionKind().Group,
 				Name:               organization.Name,
 				ObservedGeneration: organization.Status.ObservedGeneration,
 			})
+
+		}
+	}
+
+	// Reconcile Role/RoleBindings in Project namespaces.
+	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeProject) {
+		for _, organization := range organizations.Items {
+			if !organization.IsReady() {
+				continue
+			}
+			projects := &storagev1alpha1.ProjectList{}
+			if err := r.Client.List(ctx, projects, client.InNamespace(organization.Status.Namespace.Name)); err != nil {
+				return ctrl.Result{}, fmt.Errorf("listing Projects: %w", err)
+			}
+
+			for _, project := range projects.Items {
+				if !project.IsReady() {
+					continue
+				}
+				if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
+					return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
+				}
+				targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+					Kind:               project.Kind,
+					APIGroup:           project.GroupVersionKind().Group,
+					Name:               project.Name,
+					ObservedGeneration: project.Status.ObservedGeneration,
+				})
+			}
 		}
 	}
 
@@ -112,29 +147,28 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 }
 
 func (r *OrganizationRoleTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	enqueueAllTemplates := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) (out []ctrl.Request) {
+			templates := &corev1alpha1.OrganizationRoleTemplateList{}
+			if err := r.Client.List(context.Background(), templates); err != nil {
+				// This will makes the manager crashes, and it will restart and reconcile all objects again.
+				panic(fmt.Errorf("listting OrganizationRoleTemplate: %w", err))
+			}
+			for _, template := range templates.Items {
+				out = append(out, ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name: template.Name,
+					},
+				})
+			}
+			return
+		}),
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.OrganizationRoleTemplate{}).
-		Watches(&source.Kind{Type: &storagev1alpha1.Organization{}}, &handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(mapObject handler.MapObject) (out []ctrl.Request) {
-				organization := mapObject.Object.(*storagev1alpha1.Organization)
-				if !organization.IsReady() {
-					return
-				}
-				templates := &corev1alpha1.OrganizationRoleTemplateList{}
-				if err := r.Client.List(context.Background(), templates); err != nil {
-					// This will makes the manager crashes, and it will restart and reconcile all objects again.
-					panic(fmt.Errorf("listting OrganizationRoleTemplate: %w", err))
-				}
-				for _, template := range templates.Items {
-					out = append(out, ctrl.Request{
-						NamespacedName: types.NamespacedName{
-							Name: template.Name,
-						},
-					})
-				}
-				return
-			}),
-		}).
+		Watches(&source.Kind{Type: &storagev1alpha1.Organization{}}, enqueueAllTemplates).
+		Watches(&source.Kind{Type: &storagev1alpha1.Project{}}, enqueueAllTemplates).
 		Complete(r)
 }
 
@@ -181,7 +215,42 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx co
 			},
 			Subjects: organization.Spec.Owners,
 			RoleRef: rbacv1.RoleRef{
-				APIGroup: "rbac.authorization.k8s.io",
+				APIGroup: rbacv1.GroupName,
+				Kind:     "Role",
+				Name:     role.Name,
+			},
+		}
+		if err := r.reconcileRoleBinding(ctx, roleBinding, organizationRoleTemplate); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *OrganizationRoleTemplateReconciler) reconcileRBACForProject(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization, project *storagev1alpha1.Project) error {
+	// Reconcile Role.
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      organizationRoleTemplate.Name,
+			Namespace: project.Status.Namespace.Name,
+		},
+		Rules: organizationRoleTemplate.Spec.Rules,
+	}
+	if err := r.reconcileRole(ctx, role, organizationRoleTemplate); err != nil {
+		return err
+	}
+
+	// Reconcile RoleBindings.
+	if organizationRoleTemplate.HasBinding(corev1alpha1.BindToOwners) {
+		roleBinding := &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      organizationRoleTemplate.Name,
+				Namespace: project.Status.Namespace.Name,
+			},
+			// Here we are creating RoleBindings for Organization Owner, not Project Owner, since OrganizationRoleTemplate is used to config permissions of Organization Owners.
+			Subjects: organization.Spec.Owners,
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
 				Kind:     "Role",
 				Name:     role.Name,
 			},
