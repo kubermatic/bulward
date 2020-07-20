@@ -1,0 +1,5 @@
+apiVersion: apiserver.bulward.io/v1alpha1
+kind: Project
+metadata:
+  name: project-example
+spec:
