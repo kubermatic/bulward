@@ -40,3 +40,24 @@ type ObjectReference struct {
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 }
+
+// +kubebuilder:validation:Enum=Owners;Everyone
+type BindingType string
+
+const (
+	BindToOwners   BindingType = "Owners"
+	BindToEveryone BindingType = "Everyone"
+)
+
+type RoleTemplateTarget struct {
+	// Kind of target being referenced. Available values can be "Organization", "Project".
+	// +kubebuilder:validation:Enum=Organization;Project
+	Kind string `json:"kind"`
+	// APIGroup holds the API group of the referenced target, default "bulward.io".
+	// +kubebuilder:default=bulward.io
+	APIGroup string `json:"apiGroup,omitempty"`
+	// Name of the target being referenced.
+	Name string `json:"name"`
+	// ObservedGeneration is the most recent generation observed for this Target by the controller.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+}

@@ -49,6 +49,23 @@ rules:
   - patch
   - update
 - apiGroups:
+  - bulward.io
+  resources:
+  - projectroletemplates
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - bulward.io
+  resources:
+  - projectroletemplates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - rbac.authorization.k8s.io
   resources:
   - rolebindings
@@ -68,6 +85,7 @@ rules:
   - bind
   - create
   - delete
+  - escalate
   - get
   - list
   - patch

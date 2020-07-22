@@ -117,6 +117,14 @@ func run(flags *flags, log logr.Logger) error {
 		return fmt.Errorf("creating Project controller: %w", err)
 	}
 
+	if err = (&controllers.ProjectRoleTemplateReconciler{
+		Client: mgr.GetClient(),
+		Log:    log.WithName("controllers").WithName("ProjectRoleTemplate"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("creating ProjectRoleTemplate controller: %w", err)
+	}
+
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
 		return fmt.Errorf("adding readyz checker: %w", err)
 	}
