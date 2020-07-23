@@ -116,7 +116,7 @@ func (p *ProjectREST) New() runtime.Object {
 }
 
 func (p *ProjectREST) NamespaceScoped() bool {
-	return false
+	return true
 }
 
 func (p *ProjectREST) NewList() runtime.Object {

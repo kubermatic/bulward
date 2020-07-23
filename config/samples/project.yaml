@@ -2,6 +2,7 @@ apiVersion: apiserver.bulward.io/v1alpha1
 kind: Project
 metadata:
   name: project-example
+  namespace: organization-a
 spec:
   owners:
   - kind: User
