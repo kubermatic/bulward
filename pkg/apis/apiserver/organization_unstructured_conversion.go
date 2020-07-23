@@ -37,7 +37,7 @@ func chainConversion(scheme *runtime.Scheme, initObj runtime.Object, objs ...run
 	return objs[len(objs)-1], nil
 }
 
-func ConvertToUnstructuredCoreV1Alpha1Organization(organization *Organization, scheme *runtime.Scheme) (*unstructured.Unstructured, error) {
+func ConvertToUnstructuredStorageV1Alpha1Organization(organization *Organization, scheme *runtime.Scheme) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
 	if _, err := chainConversion(scheme, organization, &storagev1alpha1.Organization{}, u); err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func ConvertToUnstructuredCoreV1Alpha1Organization(organization *Organization, s
 	return u, nil
 }
 
-func ConvertFromUnstructuredCoreV1Alpha1(internalOrgv1alpha1 *unstructured.Unstructured, scheme *runtime.Scheme) (*Organization, error) {
+func ConvertFromUnstructuredStorageV1Alpha1Organization(internalOrgv1alpha1 *unstructured.Unstructured, scheme *runtime.Scheme) (*Organization, error) {
 	gvk, err := apiutil.GVKForObject(internalOrgv1alpha1, scheme)
 	if err != nil {
 		return nil, err
@@ -61,14 +61,14 @@ func ConvertFromUnstructuredCoreV1Alpha1(internalOrgv1alpha1 *unstructured.Unstr
 	return org, nil
 }
 
-func ConvertToUnstructuredCoreV1Alpha1OrganizationList(organizations *OrganizationList, scheme *runtime.Scheme) (*unstructured.UnstructuredList, error) {
+func ConvertToUnstructuredStorageV1Alpha1OrganizationList(organizations *OrganizationList, scheme *runtime.Scheme) (*unstructured.UnstructuredList, error) {
 	accesssor, err := meta.ListAccessor(organizations)
 	if err != nil {
 		return nil, err
 	}
 	sol := &unstructured.UnstructuredList{}
 	for _, it := range organizations.Items {
-		org, err := ConvertToUnstructuredCoreV1Alpha1Organization(&it, scheme)
+		org, err := ConvertToUnstructuredStorageV1Alpha1Organization(&it, scheme)
 		if err != nil {
 			return nil, err
 		}
@@ -81,14 +81,14 @@ func ConvertToUnstructuredCoreV1Alpha1OrganizationList(organizations *Organizati
 	return sol, nil
 }
 
-func ConvertFromUnstructuredCoreV1Alpha1List(internalOrgv1alpha1 *unstructured.UnstructuredList, scheme *runtime.Scheme) (*OrganizationList, error) {
+func ConvertFromUnstructuredStorageV1Alpha1OrganizationList(internalOrgv1alpha1 *unstructured.UnstructuredList, scheme *runtime.Scheme) (*OrganizationList, error) {
 	accesssor, err := meta.ListAccessor(internalOrgv1alpha1)
 	if err != nil {
 		return nil, err
 	}
 	sol := &OrganizationList{}
 	for _, it := range internalOrgv1alpha1.Items {
-		org, err := ConvertFromUnstructuredCoreV1Alpha1(&it, scheme)
+		org, err := ConvertFromUnstructuredStorageV1Alpha1Organization(&it, scheme)
 		if err != nil {
 			return nil, err
 		}

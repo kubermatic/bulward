@@ -130,7 +130,7 @@ func (o *OrganizationREST) Get(ctx context.Context, name string, options *metav1
 		return nil, err
 	}
 
-	org, err := ConvertFromUnstructuredCoreV1Alpha1(uOrg, o.scheme)
+	org, err := ConvertFromUnstructuredStorageV1Alpha1Organization(uOrg, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (o *OrganizationREST) List(ctx context.Context, options *internalversion.Li
 	if err != nil {
 		return nil, err
 	}
-	sol, err := ConvertFromUnstructuredCoreV1Alpha1List(orgs, o.scheme)
+	sol, err := ConvertFromUnstructuredStorageV1Alpha1OrganizationList(orgs, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if !isOwner {
 		return nil, apierrors.NewBadRequest("cannot create organization you're not the owner of")
 	}
-	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(org, o.scheme)
+	u, err := ConvertToUnstructuredStorageV1Alpha1Organization(org, o.scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (o *OrganizationREST) Create(ctx context.Context, obj runtime.Object, creat
 	if err != nil {
 		return nil, err
 	}
-	obj, err = ConvertFromUnstructuredCoreV1Alpha1(ret, o.scheme)
+	obj, err = ConvertFromUnstructuredStorageV1Alpha1Organization(ret, o.scheme)
 	return obj, err
 }
 
@@ -243,7 +243,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 		return nil, false, err
 	}
 
-	u, err := ConvertToUnstructuredCoreV1Alpha1Organization(newObj.(*Organization), o.scheme)
+	u, err := ConvertToUnstructuredStorageV1Alpha1Organization(newObj.(*Organization), o.scheme)
 	if err != nil {
 		return nil, false, err
 	}
@@ -257,7 +257,7 @@ func (o *OrganizationREST) Update(ctx context.Context, name string, objInfo rest
 		return nil, false, err
 	}
 
-	retObj, err := ConvertFromUnstructuredCoreV1Alpha1(u, o.scheme)
+	retObj, err := ConvertFromUnstructuredStorageV1Alpha1Organization(u, o.scheme)
 	if err != nil {
 		return nil, false, err
 	}
@@ -326,7 +326,7 @@ func (o *OrganizationREST) Watch(ctx context.Context, options *internalversion.L
 					res <- ev
 					return
 				}
-				org, err := ConvertFromUnstructuredCoreV1Alpha1(ev.Object.(*unstructured.Unstructured), o.scheme)
+				org, err := ConvertFromUnstructuredStorageV1Alpha1Organization(ev.Object.(*unstructured.Unstructured), o.scheme)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return

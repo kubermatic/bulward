@@ -62,6 +62,7 @@ func init() {
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=create;get;list;watch;update;patch;delete
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=create;get;list;watch;update;patch;delete
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")
@@ -117,6 +118,7 @@ func NewAPIServerCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		// Organization
 		if err := apiserverapi.OrganizationRESTSingleton.InjectMapper(mapper); err != nil {
 			return err
 		}
@@ -127,6 +129,19 @@ func NewAPIServerCommand() *cobra.Command {
 			return err
 		}
 		if err := apiserverapi.OrganizationRESTSingleton.InjectScheme(builders.Scheme); err != nil {
+			return err
+		}
+		// Project
+		if err := apiserverapi.ProjectRESTSingleton.InjectMapper(mapper); err != nil {
+			return err
+		}
+		if err := apiserverapi.ProjectRESTSingleton.InjectClient(k8sClient); err != nil {
+			return err
+		}
+		if err := apiserverapi.ProjectRESTSingleton.InjectDynamicClient(dynamicClient); err != nil {
+			return err
+		}
+		if err := apiserverapi.ProjectRESTSingleton.InjectScheme(builders.Scheme); err != nil {
 			return err
 		}
 		return nil

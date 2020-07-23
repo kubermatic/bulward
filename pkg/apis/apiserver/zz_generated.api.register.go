@@ -143,7 +143,7 @@ type OrganizationList struct {
 }
 
 func (Organization) NewStatus() interface{} {
-	return OrganizationStatus{}
+	return storagev1alpha1.OrganizationStatus{}
 }
 
 func (pc *Organization) GetStatus() interface{} {
@@ -151,7 +151,7 @@ func (pc *Organization) GetStatus() interface{} {
 }
 
 func (pc *Organization) SetStatus(s interface{}) {
-	pc.Status = s.(OrganizationStatus)
+	pc.Status = s.(storagev1alpha1.OrganizationStatus)
 }
 
 func (pc *Organization) GetSpec() interface{} {
@@ -159,7 +159,7 @@ func (pc *Organization) GetSpec() interface{} {
 }
 
 func (pc *Organization) SetSpec(s interface{}) {
-	pc.Spec = s.(OrganizationSpec)
+	pc.Spec = s.(storagev1alpha1.OrganizationSpec)
 }
 
 func (pc *Organization) GetObjectMeta() *metav1.ObjectMeta {
@@ -263,7 +263,7 @@ type ProjectList struct {
 }
 
 func (Project) NewStatus() interface{} {
-	return ProjectStatus{}
+	return storagev1alpha1.ProjectStatus{}
 }
 
 func (pc *Project) GetStatus() interface{} {
@@ -271,7 +271,7 @@ func (pc *Project) GetStatus() interface{} {
 }
 
 func (pc *Project) SetStatus(s interface{}) {
-	pc.Status = s.(ProjectStatus)
+	pc.Status = s.(storagev1alpha1.ProjectStatus)
 }
 
 func (pc *Project) GetSpec() interface{} {
@@ -279,7 +279,7 @@ func (pc *Project) GetSpec() interface{} {
 }
 
 func (pc *Project) SetSpec(s interface{}) {
-	pc.Spec = s.(ProjectSpec)
+	pc.Spec = s.(storagev1alpha1.ProjectSpec)
 }
 
 func (pc *Project) GetObjectMeta() *metav1.ObjectMeta {
