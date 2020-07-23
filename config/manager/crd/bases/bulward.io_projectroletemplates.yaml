@@ -57,8 +57,8 @@ spec:
                   type: string
                 type: array
               metadata:
-                description: "Metadata\tcontains additional human readable ProjectRoleTemplate
-                  details."
+                description: Metadata contains additional human readable ProjectRoleTemplate
+                  details.
                 properties:
                   description:
                     description: Description is the long and detailed description
@@ -74,8 +74,7 @@ spec:
                 - displayName
                 type: object
               projectSelector:
-                description: ProjectSelector selects Project objects that this ProjectRoleTemplate
-                  should be applied to.
+                description: ProjectSelector selects applicable target Projects.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -119,8 +118,8 @@ spec:
                     type: object
                 type: object
               rules:
-                description: Rules defines the Role that this ProjectRoleTemplate
-                  refers to.
+                description: Rules creates RBAC Roles that will be managed by this
+                  ProjectRoleTemplate.
                 items:
                   description: PolicyRule holds information that describes a policy
                     rule, but does not contain information about who the rule applies

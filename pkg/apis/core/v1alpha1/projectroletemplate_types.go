@@ -23,13 +23,13 @@ import (
 
 // ProjectRoleTemplateSpec describes the desired state of ProjectRoleTemplate.
 type ProjectRoleTemplateSpec struct {
-	// Metadata	contains additional human readable ProjectRoleTemplate details.
+	// Metadata contains additional human readable ProjectRoleTemplate details.
 	Metadata *ProjectRoleTemplateMetadata `json:"metadata,omitempty"`
 	// BindTo defines the member types of the Project that this ProjectRoleTemplate will be bound to.
 	BindTo []BindingType `json:"bindTo,omitempty"`
-	// ProjectSelector selects Project objects that this ProjectRoleTemplate should be applied to.
+	// ProjectSelector selects applicable target Projects.
 	ProjectSelector *metav1.LabelSelector `json:"projectSelector,omitempty"`
-	// Rules defines the Role that this ProjectRoleTemplate refers to.
+	// Rules creates RBAC Roles that will be managed by this ProjectRoleTemplate.
 	Rules []rbacv1.PolicyRule `json:"rules"`
 }
 

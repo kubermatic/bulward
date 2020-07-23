@@ -53,6 +53,7 @@ rules:
   resources:
   - projectroletemplates
   verbs:
+  - create
   - get
   - list
   - update

@@ -193,22 +193,29 @@ func (r *ProjectRoleTemplateReconciler) reconcileRBACForProject(ctx context.Cont
 	}
 
 	// Reconcile RoleBindings.
+	var subjects []rbacv1.Subject
 	if projectRoleTemplate.HasBinding(corev1alpha1.BindToEveryone) {
-		roleBinding := &rbacv1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      projectRoleTemplate.Name,
-				Namespace: project.Status.Namespace.Name,
-			},
-			Subjects: project.Status.Members,
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     "Role",
-				Name:     role.Name,
-			},
-		}
-		if err := r.reconcileRoleBinding(ctx, roleBinding, projectRoleTemplate); err != nil {
-			return err
-		}
+		// This is needed, because it can be the case that Organization Owner has not created any RoleBindings for Project
+		// Owner, so Project owner will not present in the project.Status.Member.
+		subjects = append(subjects, project.Spec.Owners...)
+		subjects = append(subjects, project.Status.Members...)
+	} else if projectRoleTemplate.HasBinding(corev1alpha1.BindToOwners) {
+		subjects = append(subjects, project.Spec.Owners...)
+	}
+	roleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      projectRoleTemplate.Name,
+			Namespace: project.Status.Namespace.Name,
+		},
+		Subjects: extractSubjects(subjects),
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "Role",
+			Name:     role.Name,
+		},
+	}
+	if err := r.reconcileRoleBinding(ctx, roleBinding, projectRoleTemplate); err != nil {
+		return err
 	}
 	return nil
 }
@@ -220,9 +227,7 @@ func (r *ProjectRoleTemplateReconciler) reconcileRole(ctx context.Context, role 
 		func(actual, desired runtime.Object) error {
 			actualRule := actual.(*rbacv1.Role)
 			desiredRole := desired.(*rbacv1.Role)
-			if !reflect.DeepEqual(actualRule.Rules, desiredRole.Rules) {
-				actualRule.Rules = desiredRole.Rules
-			}
+			actualRule.Rules = desiredRole.Rules
 			return nil
 		}); err != nil {
 		return fmt.Errorf("cannot reconcile Role: %w", err)
@@ -237,11 +242,8 @@ func (r *ProjectRoleTemplateReconciler) reconcileRoleBinding(ctx context.Context
 		func(actual, desired runtime.Object) error {
 			actualRuleBinding := actual.(*rbacv1.RoleBinding)
 			desiredRoleBinding := desired.(*rbacv1.RoleBinding)
-			if !reflect.DeepEqual(actualRuleBinding.RoleRef, desiredRoleBinding.RoleRef) {
-				actualRuleBinding.RoleRef = desiredRoleBinding.RoleRef
-			} else if !reflect.DeepEqual(actualRuleBinding.Subjects, desiredRoleBinding.Subjects) {
-				actualRuleBinding.Subjects = desiredRoleBinding.Subjects
-			}
+			actualRuleBinding.RoleRef = desiredRoleBinding.RoleRef
+			actualRuleBinding.Subjects = desiredRoleBinding.Subjects
 			return nil
 		}); err != nil {
 		return fmt.Errorf("cannot reconcile RoleBinding: %w", err)
