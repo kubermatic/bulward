@@ -49,7 +49,7 @@ RUN go get github.com/pablo-ruth/go-init
 # Install controller-gen in the dockerfile, otherwise it will be installed during `make generate` which will modify the go.mod
 # and go.sum files, and make the directory dirty.
 RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.9
-RUN go get github.com/kubermatic-labs/boilerplate
+RUN go get github.com/kubermatic-labs/boilerplate@v0.1.1
 RUN pip3 install pre-commit awscli yq
 
 WORKDIR /src
