@@ -56,7 +56,7 @@ var (
 // +k8s:deepcopy-gen=false
 type ProjectREST struct {
 	client    client.Client
-	dynamicRI dynamic.ResourceInterface
+	dynamicRI dynamic.NamespaceableResourceInterface
 	mapper    meta.RESTMapper
 	scheme    *runtime.Scheme
 }
@@ -125,7 +125,7 @@ func (p *ProjectREST) NewList() runtime.Object {
 }
 
 func (p *ProjectREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-	uProject, err := p.dynamicRI.Get(ctx, name, *options)
+	uProject, err := p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Get(ctx, name, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (p *ProjectREST) List(ctx context.Context, options *internalversion.ListOpt
 	if err := p.scheme.Convert(options, opts, nil); err != nil {
 		return nil, err
 	}
-	projects, err := p.dynamicRI.List(ctx, *opts)
+	projects, err := p.dynamicRI.Namespace(request.NamespaceValue(ctx)).List(ctx, *opts)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (p *ProjectREST) Create(ctx context.Context, obj runtime.Object, createVali
 		subresource = append(subresource, a.GetSubresource())
 	}
 
-	ret, err := p.dynamicRI.Create(ctx, u, *options, subresource...)
+	ret, err := p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Create(ctx, u, *options, subresource...)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func (p *ProjectREST) Update(ctx context.Context, name string, objInfo rest.Upda
 	if a.GetSubresource() != "" {
 		subresource = append(subresource, a.GetSubresource())
 	}
-	u, err = p.dynamicRI.Update(ctx, u, *options, subresource...)
+	u, err = p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Update(ctx, u, *options, subresource...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -279,7 +279,7 @@ func (p *ProjectREST) Delete(ctx context.Context, name string, deleteValidation 
 	if err := p.checkOwnership(ctx, obj.(*Project)); err != nil {
 		return nil, false, err
 	}
-	err = p.dynamicRI.Delete(ctx, name, *options)
+	err = p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Delete(ctx, name, *options)
 	return obj, false, err
 }
 
@@ -297,7 +297,7 @@ func (p *ProjectREST) DeleteCollection(ctx context.Context, deleteValidation res
 	if err := p.scheme.Convert(listOptions, opts, nil); err != nil {
 		return nil, err
 	}
-	if err := p.dynamicRI.DeleteCollection(ctx, *options, *opts); err != nil {
+	if err := p.dynamicRI.Namespace(request.NamespaceValue(ctx)).DeleteCollection(ctx, *options, *opts); err != nil {
 		return nil, err
 	}
 	return projects, nil
@@ -308,7 +308,7 @@ func (p *ProjectREST) Watch(ctx context.Context, options *internalversion.ListOp
 	if err := p.scheme.Convert(options, opts, nil); err != nil {
 		return nil, err
 	}
-	wi, err := p.dynamicRI.Watch(ctx, *opts)
+	wi, err := p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Watch(ctx, *opts)
 	if err != nil {
 		return nil, err
 	}
