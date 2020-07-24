@@ -17,8 +17,7 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+set -x
 
-REPO_ROOT=$(dirname "${BASH_SOURCE}")/..
-
-boilerDir="${REPO_ROOT}/hack/boilerplate"
-go run ${boilerDir}/boilerplate.go -verbose
+cd $(dirname "${BASH_SOURCE}")/..
+boilerplate -boilerplates hack/boilerplate/ -verbose
