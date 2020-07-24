@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	corev1 "k8s.io/client-go/tools/clientcmd/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/kubermatic/utils/pkg/testutil"
@@ -79,7 +80,7 @@ func TestAPIServerProject(t *testing.T) {
 	}
 
 	wi, err := dcl.Resource(projectGvr).Watch(ctx, metav1.ListOptions{
-		FieldSelector: "metadata.name=test",
+		FieldSelector: "metadata.name=test,metadata.namespace=test-org",
 	})
 	require.NoError(t, err)
 	eventTracer := events.NewTracer(wi, events.IsObjectName("test"))
@@ -95,7 +96,7 @@ func TestAPIServerProject(t *testing.T) {
 
 	t.Log("list")
 	projects := &apiserverv1alpha1.ProjectList{}
-	if assert.NoError(t, cl.List(ctx, projects)) {
+	if assert.NoError(t, cl.List(ctx, projects, client.InNamespace(ns.Name))) {
 		if assert.Len(t, projects.Items, 1) {
 			assert.Equal(t, "test", projects.Items[0].Name)
 			assert.Contains(t, project.Spec.Owners, owner, "owner")

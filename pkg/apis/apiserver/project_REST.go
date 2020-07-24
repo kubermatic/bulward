@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/endpoints/filters"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
@@ -148,7 +149,7 @@ func (p *ProjectREST) List(ctx context.Context, options *internalversion.ListOpt
 	if err != nil {
 		return nil, err
 	}
-	spl, err := ConvertFromUnstructuredStorageV1Alpha1ProjectList(projects, p.scheme)
+	spl, err := ConvertFromUnstructuredStorageV1Alpha1ProjectList(projects, p.scheme, request.NamespaceValue(ctx))
 	if err != nil {
 		return nil, err
 	}

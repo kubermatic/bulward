@@ -51,7 +51,7 @@ func ConvertFromUnstructuredStorageV1Alpha1Project(internalProjectv1alpha1 *unst
 	return project, nil
 }
 
-func ConvertToUnstructuredStorageV1Alpha1ProjectList(projects *ProjectList, scheme *runtime.Scheme) (*unstructured.UnstructuredList, error) {
+func ConvertToUnstructuredStorageV1Alpha1ProjectList(projects *ProjectList, scheme *runtime.Scheme, namespace string) (*unstructured.UnstructuredList, error) {
 	accesssor, err := meta.ListAccessor(projects)
 	if err != nil {
 		return nil, err
@@ -64,14 +64,14 @@ func ConvertToUnstructuredStorageV1Alpha1ProjectList(projects *ProjectList, sche
 		}
 		spl.Items = append(spl.Items, *project)
 	}
-	spl.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, internalProjectResource))
+	spl.SetSelfLink(fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, namespace, internalProjectResource))
 	spl.SetResourceVersion(accesssor.GetResourceVersion())
 	spl.SetContinue(accesssor.GetContinue())
 	spl.SetRemainingItemCount(accesssor.GetRemainingItemCount())
 	return spl, nil
 }
 
-func ConvertFromUnstructuredStorageV1Alpha1ProjectList(internalProjectv1alpha1 *unstructured.UnstructuredList, scheme *runtime.Scheme) (*ProjectList, error) {
+func ConvertFromUnstructuredStorageV1Alpha1ProjectList(internalProjectv1alpha1 *unstructured.UnstructuredList, scheme *runtime.Scheme, namespace string) (*ProjectList, error) {
 	accesssor, err := meta.ListAccessor(internalProjectv1alpha1)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func ConvertFromUnstructuredStorageV1Alpha1ProjectList(internalProjectv1alpha1 *
 		}
 		spl.Items = append(spl.Items, *project)
 	}
-	spl.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", SchemeGroupVersion.Group, "v1alpha1", externalProjectResource))
+	spl.SetSelfLink(fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, namespace, internalProjectResource))
 	spl.SetResourceVersion(accesssor.GetResourceVersion())
 	spl.SetContinue(accesssor.GetContinue())
 	spl.SetRemainingItemCount(accesssor.GetRemainingItemCount())
