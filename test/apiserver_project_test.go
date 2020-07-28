@@ -118,7 +118,7 @@ func TestAPIServerProject(t *testing.T) {
 	require.NoError(t, eventTracer.WaitUntil(ctx, events.IsType(watch.Modified)))
 
 	project = &apiserverv1alpha1.Project{}
-	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test"}, project))
+	require.NoError(t, cl.Get(ctx, types.NamespacedName{Name: "test", Namespace: ns.Name}, project))
 	assert.Equal(t, "bb", project.Labels["aa"])
 
 	t.Log("delete")

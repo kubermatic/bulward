@@ -62,7 +62,7 @@ func init() {
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations,verbs=create;get;list;watch;update;patch;delete
-// +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=create;get;list;watch;update;patch;delete
+// +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=create;get;list;watch;update;patch;delete;deletecollection
 
 func NewAPIServerCommand() *cobra.Command {
 	log := ctrl.Log.WithName("apiserver")
