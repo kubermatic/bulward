@@ -67,7 +67,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	var targets []corev1alpha1.OrganizationRoleTemplateTarget
+	var targets []corev1alpha1.RoleTemplateTarget
 	organizations := &storagev1alpha1.OrganizationList{}
 	if err := r.Client.List(ctx, organizations); err != nil {
 		return ctrl.Result{}, fmt.Errorf("listing Organizations: %w", err)
@@ -83,7 +83,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
 				return ctrl.Result{}, fmt.Errorf("reconcling Organization RBAC: %w", err)
 			}
-			targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+			targets = append(targets, corev1alpha1.RoleTemplateTarget{
 				Kind:               organization.Kind,
 				APIGroup:           organization.GroupVersionKind().Group,
 				Name:               organization.Name,
@@ -111,7 +111,7 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 				if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
 					return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
 				}
-				targets = append(targets, corev1alpha1.OrganizationRoleTemplateTarget{
+				targets = append(targets, corev1alpha1.RoleTemplateTarget{
 					Kind:               project.Kind,
 					APIGroup:           project.GroupVersionKind().Group,
 					Name:               project.Name,

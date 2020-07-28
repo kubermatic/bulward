@@ -1,0 +1,22 @@
+apiVersion: bulward.io/v1alpha1
+kind: ProjectRoleTemplate
+metadata:
+  name: project-rbac-admin
+  namespace: organization-a
+spec:
+  projectSelector: {}
+  bindTo:
+    - Everyone
+  rules:
+    - apiGroups:
+        - myapp.bulward.io
+      resources:
+        - myapp
+      verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete

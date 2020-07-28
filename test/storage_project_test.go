@@ -156,6 +156,50 @@ func TestStorageProject(t *testing.T) {
 		}
 		return false, nil
 	}), "project didnt reconcile added member")
+
+	t.Log("Organization Owner has permission to create ProjectRoleTemplate.")
+	projectRoleTemplate := &corev1alpha1.ProjectRoleTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "project-template",
+			Namespace: org.Status.Namespace.Name,
+		},
+		Spec: corev1alpha1.ProjectRoleTemplateSpec{
+			BindTo: []corev1alpha1.BindingType{corev1alpha1.BindToEveryone},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{"myapp.io"},
+					Resources: []string{"myapp"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
+			},
+			ProjectSelector: &metav1.LabelSelector{},
+		},
+	}
+	require.NoError(t, ownerClient.Create(ctx, projectRoleTemplate))
+	require.NoError(t, testutil.WaitUntilReady(ctx, cl, projectRoleTemplate))
+	// Make sure Role/RoleBinding for managed by ProjectRoleTemplate has been created in Project namespace.
+	projectRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      projectRoleTemplate.Name,
+			Namespace: projectNs.Name,
+		},
+	}
+	projectRoleBinding := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      projectRoleTemplate.Name,
+			Namespace: projectNs.Name,
+		},
+	}
+	require.NoError(t, testutil.WaitUntilFound(ctx, cl, projectRole))
+	require.NoError(t, testutil.WaitUntilFound(ctx, cl, projectRoleBinding))
+	assert.Contains(t, projectRoleBinding.Subjects, rbacSubject)
+	assert.Contains(t, projectRoleBinding.Subjects, organizationOwner)
+	assert.Contains(t, projectRoleBinding.Subjects, projectOwner)
+
+	require.NoError(t, ownerClient.Delete(ctx, projectRoleTemplate))
+	require.NoError(t, testutil.WaitUntilNotFound(ctx, ownerClient, projectRole))
+	require.NoError(t, testutil.WaitUntilNotFound(ctx, ownerClient, projectRoleBinding))
+
 	require.NoError(t, testutil.DeleteAndWaitUntilNotFound(ctx, cl, rb))
 	require.NoError(t, cl.WaitUntil(ctx, project, func() (done bool, err error) {
 		return len(project.Status.Members) == 1, nil

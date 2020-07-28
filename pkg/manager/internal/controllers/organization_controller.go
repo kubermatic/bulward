@@ -53,6 +53,7 @@ type OrganizationReconciler struct {
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=organizations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=get;list;watch
 // +kubebuilder:rbac:groups=bulward.io,resources=organizationroletemplates,verbs=create
+// +kubebuilder:rbac:groups=bulward.io,resources=projectroletemplates,verbs=create
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch
 

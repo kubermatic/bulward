@@ -6,15 +6,15 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
-  name: organizationroletemplates.bulward.io
+  name: projectroletemplates.bulward.io
 spec:
   group: bulward.io
   names:
-    kind: OrganizationRoleTemplate
-    listKind: OrganizationRoleTemplateList
-    plural: organizationroletemplates
-    singular: organizationroletemplate
-  scope: Cluster
+    kind: ProjectRoleTemplate
+    listKind: ProjectRoleTemplateList
+    plural: projectroletemplates
+    singular: projectroletemplate
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.metadata.displayName
@@ -29,8 +29,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OrganizationRoleTemplate is internal representation for OrganizationRoleTemplate
-          in Bulward.
+        description: ProjectRoleTemplate is used by Organization Owners to manage
+          the same Role across multiple Projects in Bulward.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -45,12 +45,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: OrganizationRoleTemplateSpec describes the desired state
-              of OrganizationRoleTemplate.
+            description: ProjectRoleTemplateSpec describes the desired state of ProjectRoleTemplate.
             properties:
               bindTo:
-                description: BindTo defines the member types of the Organization that
-                  this OrganizationRoleTemplate will be bound to.
+                description: BindTo defines the member types of the Project that this
+                  ProjectRoleTemplate will be bound to.
                 items:
                   enum:
                   - Owners
@@ -58,25 +57,69 @@ spec:
                   type: string
                 type: array
               metadata:
-                description: "Metadata\tcontains additional human readable OrganizationRoleTemplate
-                  details."
+                description: Metadata contains additional human readable ProjectRoleTemplate
+                  details.
                 properties:
                   description:
                     description: Description is the long and detailed description
-                      of the OrganizationRoleTemplate.
+                      of the ProjectRoleTemplate.
                     minLength: 1
                     type: string
                   displayName:
-                    description: DisplayName is the human-readable name of this OrganizationRoleTemplate.
+                    description: DisplayName is the human-readable name of this ProjectRoleTemplate.
                     minLength: 1
                     type: string
                 required:
                 - description
                 - displayName
                 type: object
+              projectSelector:
+                description: ProjectSelector selects applicable target Projects.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
               rules:
-                description: Rules defines the Role that this OrganizationRoleTemplate
-                  refers to.
+                description: Rules creates RBAC Roles that will be managed by this
+                  ProjectRoleTemplate.
                 items:
                   description: PolicyRule holds information that describes a policy
                     rule, but does not contain information about who the rule applies
@@ -125,29 +168,19 @@ spec:
                   - verbs
                   type: object
                 type: array
-              scopes:
-                description: Scopes defines the scopes of this OrganizationRoleTemplate.
-                items:
-                  enum:
-                  - Organization
-                  - Project
-                  type: string
-                minItems: 1
-                type: array
             required:
             - rules
-            - scopes
             type: object
           status:
-            description: OrganizationRoleTemplateStatus represents the observed state
-              of OrganizationRoleTemplate.
+            description: ProjectRoleTemplateStatus represents the observed state of
+              ProjectRoleTemplate.
             properties:
               conditions:
                 description: Conditions represents the latest available observations
-                  of a OrganizationRoleTemplate's current state.
+                  of a ProjectRoleTemplate's current state.
                 items:
-                  description: OrganizationRoleTemplateCondition contains details
-                    for the current condition of this OrganizationRoleTemplate.
+                  description: ProjectRoleTemplateCondition contains details for the
+                    current condition of this ProjectRoleTemplate.
                   properties:
                     lastTransitionTime:
                       description: LastTransitionTime is the last time the condition
@@ -167,8 +200,8 @@ spec:
                         'False', 'Unknown').
                       type: string
                     type:
-                      description: Type is the type of the OrganizationRoleTemplate
-                        condition, currently ('Ready').
+                      description: Type is the type of the ProjectRoleTemplate condition,
+                        currently ('Ready').
                       type: string
                   required:
                   - lastTransitionTime
@@ -180,7 +213,7 @@ spec:
                 type: array
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
-                  for this OrganizationRoleTemplate by the controller.
+                  for this ProjectRoleTemplate by the controller.
                 format: int64
                 type: integer
               phase:
@@ -191,8 +224,8 @@ spec:
                   else use conditions.
                 type: string
               targets:
-                description: Targets holds different targets(Organization, Project)
-                  that this OrganizationRoleTemplate targets to.
+                description: Targets holds different targets(Project, Project) that
+                  this ProjectRoleTemplate targets to.
                 items:
                   properties:
                     apiGroup:

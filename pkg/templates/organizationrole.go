@@ -50,6 +50,11 @@ func ProjectAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTempla
 					Resources: []string{"projects"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 				},
+				{
+					APIGroups: []string{"bulward.io"},
+					Resources: []string{"projectroletemplates"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+				},
 			},
 		},
 	}
