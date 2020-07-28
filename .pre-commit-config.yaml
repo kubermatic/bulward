@@ -29,7 +29,7 @@ repos:
   - id: LICENSE
     name: LICENSE
     language: system
-    entry: bash ./hack/verify-boilerplate.sh
+    entry: boilerplate -boilerplates hack/boilerplate/ -verbose
     exclude: ".*"
     always_run: true
   - id: go-mod-tidy
