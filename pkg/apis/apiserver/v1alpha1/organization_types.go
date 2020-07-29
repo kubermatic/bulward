@@ -30,8 +30,8 @@ import (
 // +resource:path=organizations,rest=OrganizationREST
 type Organization struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   storagev1alpha1.OrganizationSpec   `json:"spec,omitempty"`
-	Status storagev1alpha1.OrganizationStatus `json:"status,omitempty"`
+	Spec   storagev1alpha1.OrganizationSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status storagev1alpha1.OrganizationStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }

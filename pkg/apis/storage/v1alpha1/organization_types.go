@@ -24,39 +24,39 @@ import (
 // OrganizationSpec describes the desired state of Organization.
 type OrganizationSpec struct {
 	// Metadata	contains additional human readable Organization details.
-	Metadata *OrganizationMetadata `json:"metadata,omitempty"`
+	Metadata *OrganizationMetadata `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	// Owners holds the RBAC subjects that represent the owners of this organization.
 	// +kubebuilder:validation:MinItems=1
-	Owners []rbacv1.Subject `json:"owners"`
+	Owners []rbacv1.Subject `json:"owners" protobuf:"bytes,2,rep,name=owners"`
 }
 
 // OrganizationMetadata contains the metadata of the Organization.
 type OrganizationMetadata struct {
 	// DisplayName is the human-readable name of this Organization.
 	// +kubebuilder:validation:MinLength=1
-	DisplayName string `json:"displayName"`
+	DisplayName string `json:"displayName" protobuf:"bytes,1,opt,name=displayName"`
 	// Description is the long and detailed description of the Organization.
 	// +kubebuilder:validation:MinLength=1
-	Description string `json:"description"`
+	Description string `json:"description" protobuf:"bytes,2,opt,name=description"`
 }
 
 // OrganizationStatus represents the observed state of Organization.
 type OrganizationStatus struct {
 	// NamespaceName is the name of the Namespace that the Organization manages.
-	Namespace *ObjectReference `json:"namespace,omitempty"`
+	Namespace *ObjectReference `json:"namespace,omitempty" protobuf:"bytes,1,opt,name=namespace"`
 	// ObservedGeneration is the most recent generation observed for this Organization by the controller.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,2,opt,name=observedGeneration"`
 	// Conditions represents the latest available observations of a Organization's current state.
-	Conditions []OrganizationCondition `json:"conditions,omitempty"`
+	Conditions []OrganizationCondition `json:"conditions,omitempty" protobuf:"bytes,3,rep,name=conditions"`
 	// DEPRECATED.
 	// Phase represents the current lifecycle state of this object.
 	// Consider this field DEPRECATED, it will be removed as soon as there
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
-	Phase OrganizationPhaseType `json:"phase,omitempty"`
+	Phase OrganizationPhaseType `json:"phase,omitempty" protobuf:"bytes,4,opt,name=phase,casttype=OrganizationPhaseType"`
 
 	// Members enumerate all rbacv1.Subject mentioned in the Organization RoleBinding's
-	Members []rbacv1.Subject `json:"members,omitempty"`
+	Members []rbacv1.Subject `json:"members,omitempty" protobuf:"bytes,5,rep,name=members"`
 }
 
 // OrganizationPhaseType represents all conditions as a single string for printing by using kubectl commands.
@@ -113,15 +113,15 @@ const (
 // OrganizationCondition contains details for the current condition of this Organization.
 type OrganizationCondition struct {
 	// Type is the type of the Organization condition, currently ('Ready').
-	Type OrganizationConditionType `json:"type"`
+	Type OrganizationConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=OrganizationConditionType"`
 	// Status is the status of the condition, one of ('True', 'False', 'Unknown').
-	Status ConditionStatus `json:"status"`
+	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=ConditionStatus"`
 	// LastTransitionTime is the last time the condition transits from one status to another.
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime" protobuf:"bytes,3,opt,name=lastTransitionTime"`
 	// Reason is the (brief) reason for the condition's last transition.
-	Reason string `json:"reason"`
+	Reason string `json:"reason" protobuf:"bytes,4,opt,name=reason"`
 	// Message is the human readable message indicating details about last transition.
-	Message string `json:"message"`
+	Message string `json:"message" protobuf:"bytes,5,opt,name=message"`
 }
 
 // GetCondition returns the Condition of the given condition type, if it exists.
@@ -173,10 +173,10 @@ func (s *OrganizationStatus) SetCondition(condition OrganizationCondition) {
 // +kubebuilder:resource:scope=Cluster,shortName=iorg
 type Organization struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   OrganizationSpec   `json:"spec,omitempty"`
-	Status OrganizationStatus `json:"status,omitempty"`
+	Spec   OrganizationSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status OrganizationStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // IsReady returns if the Organization is ready.
@@ -202,10 +202,6 @@ func (s *Organization) IsReady() bool {
 // +kubebuilder:object:root=true
 type OrganizationList struct {
 	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Organization `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Organization{}, &OrganizationList{})
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Items           []Organization `json:"items" protobuf:"bytes,2,rep,name=items"`
 }

@@ -90,7 +90,7 @@ func (o *OrganizationREST) InjectDynamicClient(dynamic dynamic.Interface) error 
 	if o.dynamicRI != nil {
 		return fmt.Errorf("dynamicRI already injected")
 	}
-	o.dynamicRI = dynamic.Resource(storagev1alpha1.GroupVersion.WithResource(internalOrganizationResource))
+	o.dynamicRI = dynamic.Resource(storagev1alpha1.SchemeGroupVersion.WithResource(internalOrganizationResource))
 	return nil
 }
 

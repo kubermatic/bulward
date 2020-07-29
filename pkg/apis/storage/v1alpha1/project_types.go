@@ -31,10 +31,10 @@ import (
 // +kubebuilder:resource:scope=Namespaced,shortName=iprj
 type Project struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   ProjectSpec   `json:"spec,omitempty"`
-	Status ProjectStatus `json:"status,omitempty"`
+	Spec   ProjectSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status ProjectStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
 // IsReady returns if the Project is ready.
@@ -59,35 +59,35 @@ func (s *Project) IsReady() bool {
 // ProjectList contains a list of Projects.
 // +kubebuilder:object:root=true
 type ProjectList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Project `json:"items"`
+	metav1.TypeMeta `json:",inline"  protobuf:"bytes,2,opt,name=sample"`
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Items           []Project `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // ProjectSpec describes the desired state of Project.
 type ProjectSpec struct {
 	// Owners holds the RBAC subjects that represent the owners of this project.
 	// +kubebuilder:validation:MinItems=1
-	Owners []rbacv1.Subject `json:"owners"`
+	Owners []rbacv1.Subject `json:"owners" protobuf:"bytes,1,opt,name=owners"`
 }
 
 // ProjectStatus describes the observed state of Project.
 type ProjectStatus struct {
 	// NamespaceName is the name of the Namespace that the Project manages.
-	Namespace *ObjectReference `json:"namespace,omitempty"`
+	Namespace *ObjectReference `json:"namespace,omitempty" protobuf:"bytes,1,opt,name=namespace"`
 	// ObservedGeneration is the most recent generation observed for this Project by the controller.
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"bytes,2,opt,name=observedGeneration"`
 	// Conditions represents the latest available observations of a Project's current state.
-	Conditions []ProjectCondition `json:"conditions,omitempty"`
+	Conditions []ProjectCondition `json:"conditions,omitempty" protobuf:"bytes,3,opt,name=conditions"`
 	// DEPRECATED.
 	// Phase represents the current lifecycle state of this object.
 	// Consider this field DEPRECATED, it will be removed as soon as there
 	// is a mechanism to map conditions to strings when printing the property.
 	// This is only for display purpose, for everything else use conditions.
-	Phase ProjectPhaseType `json:"phase,omitempty"`
+	Phase ProjectPhaseType `json:"phase,omitempty" protobuf:"bytes,4,opt,name=phase"`
 
 	// Members enumerate all rbacv1.Subject mentioned in the Project's RoleBinding's
-	Members []rbacv1.Subject `json:"members,omitempty"`
+	Members []rbacv1.Subject `json:"members,omitempty" protobuf:"bytes,5,rep,name=members"`
 }
 
 // ProjectPhaseType represents all conditions as a single string for printing by using kubectl commands.
@@ -144,15 +144,15 @@ const (
 // ProjectCondition contains details for the current condition of this Project.
 type ProjectCondition struct {
 	// Type is the type of the Project condition, currently ('Ready').
-	Type ProjectConditionType `json:"type"`
+	Type ProjectConditionType `json:"type" protobuf:"bytes,1,opt,name=type"`
 	// Status is the status of the condition, one of ('True', 'False', 'Unknown').
-	Status ConditionStatus `json:"status"`
+	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status"`
 	// LastTransitionTime is the last time the condition transits from one status to another.
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime" protobuf:"bytes,3,opt,name=lastTransitionTime"`
 	// Reason is the (brief) reason for the condition's last transition.
-	Reason string `json:"reason"`
+	Reason string `json:"reason" protobuf:"bytes,4,opt,name=reason"`
 	// Message is the human readable message indicating details about last transition.
-	Message string `json:"message"`
+	Message string `json:"message" protobuf:"bytes,5,opt,name=message"`
 }
 
 // GetCondition returns the Condition of the given condition type, if it exists.
@@ -192,8 +192,4 @@ func (s *ProjectStatus) SetCondition(condition ProjectCondition) {
 	}
 
 	s.Conditions = append(s.Conditions, condition)
-}
-
-func init() {
-	SchemeBuilder.Register(&Project{}, &ProjectList{})
 }

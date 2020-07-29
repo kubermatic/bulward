@@ -40,7 +40,7 @@ func ConvertFromUnstructuredStorageV1Alpha1Project(internalProjectv1alpha1 *unst
 	if err != nil {
 		return nil, err
 	}
-	expectedGVK := storagev1alpha1.GroupVersion.WithKind("Project")
+	expectedGVK := storagev1alpha1.SchemeGroupVersion.WithKind("Project")
 	if gvk != expectedGVK {
 		return nil, fmt.Errorf("wrong GVK, expected %v, found %v", expectedGVK, gvk)
 	}

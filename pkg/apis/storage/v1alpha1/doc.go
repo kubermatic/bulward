@@ -19,5 +19,6 @@ limitations under the License.
 // of the same resource
 
 // +k8s:openapi-gen=true
+// +k8s:protobuf-gen=package
 // +groupName=storage.bulward.io
 package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"

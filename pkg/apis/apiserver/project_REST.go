@@ -90,7 +90,7 @@ func (p *ProjectREST) InjectDynamicClient(dynamic dynamic.Interface) error {
 	if p.dynamicRI != nil {
 		return fmt.Errorf("dynamicRI already injected")
 	}
-	p.dynamicRI = dynamic.Resource(storagev1alpha1.GroupVersion.WithResource(internalProjectResource))
+	p.dynamicRI = dynamic.Resource(storagev1alpha1.SchemeGroupVersion.WithResource(internalProjectResource))
 	return nil
 }
 

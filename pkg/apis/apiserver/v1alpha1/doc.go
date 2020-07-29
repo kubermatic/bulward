@@ -23,4 +23,5 @@ limitations under the License.
 // +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/apiserver
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=apiserver.bulward.io
+// +k8s:protobuf-gen=package
 package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
