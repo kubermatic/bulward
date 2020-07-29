@@ -74,7 +74,6 @@ func ConvertToUnstructuredStorageV1Alpha1OrganizationList(organizations *Organiz
 		}
 		sol.Items = append(sol.Items, *org)
 	}
-	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", storagev1alpha1.GroupVersion.Group, storagev1alpha1.GroupVersion.Version, internalOrganizationResource))
 	sol.SetResourceVersion(accesssor.GetResourceVersion())
 	sol.SetContinue(accesssor.GetContinue())
 	sol.SetRemainingItemCount(accesssor.GetRemainingItemCount())
@@ -94,7 +93,6 @@ func ConvertFromUnstructuredStorageV1Alpha1OrganizationList(internalOrgv1alpha1 
 		}
 		sol.Items = append(sol.Items, *org)
 	}
-	sol.SetSelfLink(fmt.Sprintf("/apis/%s/%s/%s", SchemeGroupVersion.Group, "v1alpha1", externalOrganizationResource))
 	sol.SetResourceVersion(accesssor.GetResourceVersion())
 	sol.SetContinue(accesssor.GetContinue())
 	sol.SetRemainingItemCount(accesssor.GetRemainingItemCount())

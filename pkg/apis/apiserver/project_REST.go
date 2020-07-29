@@ -149,7 +149,7 @@ func (p *ProjectREST) List(ctx context.Context, options *internalversion.ListOpt
 	if err != nil {
 		return nil, err
 	}
-	spl, err := ConvertFromUnstructuredStorageV1Alpha1ProjectList(projects, p.scheme, request.NamespaceValue(ctx))
+	spl, err := ConvertFromUnstructuredStorageV1Alpha1ProjectList(projects, p.scheme)
 	if err != nil {
 		return nil, err
 	}
