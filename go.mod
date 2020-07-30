@@ -6,7 +6,6 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1
-	github.com/google/go-cmp v0.5.0
 	github.com/kubermatic/utils v0.0.0-20200706114720-916dc1d97253
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.4.0
