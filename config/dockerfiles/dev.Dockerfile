@@ -18,7 +18,7 @@
 FROM golang:1.14.2
 
 RUN apt-get -qq update && \
-  apt-get -qqy install ed curl gettext zip python3 python3-pip git jq make && \
+  apt-get -qqy install ed curl gettext zip python3 python3-pip git jq make build-essential autoconf automake libtool && \
   rm -rf /var/lib/apt/lists/* && \
   pip3 install pre-commit yq
 
@@ -30,10 +30,25 @@ ENV PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin
 # this GOROOT ENV is needed for apiregister-gen.
 ENV GOROOT=/usr/local/go
 
+# Install protoc
+ARG PROTOBUF_VERSION
+ENV PROTOBUF_URL https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz
+RUN curl -L -o /tmp/protobuf.tar.gz $PROTOBUF_URL
+WORKDIR /tmp/
+RUN tar xvzf protobuf.tar.gz
+WORKDIR /tmp/protobuf-${PROTOBUF_VERSION}
+RUN ./autogen.sh && \
+    ./configure --prefix=/protoc && \
+    make -j 3 && \
+    make check && \
+    make install
+
+ENV PATH=${PATH}:/protoc/bin
+
 # versions without the `v` prefix
 ARG APISERVER_BUILDER_VERSION
 ARG CONTROLLER_GEN_VERSION
 
-RUN echo $PATH && go get golang.org/x/tools/cmd/goimports && \
+RUN echo $PATH && go get golang.org/x/tools/cmd/goimports && go get github.com/gogo/protobuf/protoc-gen-gogo &&\
   go get sigs.k8s.io/controller-tools/cmd/controller-gen@v${CONTROLLER_GEN_VERSION} && \
   curl -sL https://github.com/kubernetes-sigs/apiserver-builder-alpha/releases/download/v${APISERVER_BUILDER_VERSION}/apiserver-builder-alpha-v${APISERVER_BUILDER_VERSION}-linux-amd64.tar.gz | tar -xz -C /usr/local
