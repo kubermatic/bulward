@@ -23,8 +23,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+	apiserverv1alpha1 "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
+	corev1alpha1 "k8c.io/bulward/pkg/apis/core/v1alpha1"
 )
 
 var (

@@ -19,4 +19,4 @@ limitations under the License.
 // of the same resource
 
 // +groupName=bulward.io
-package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
+package v1alpha1 // import "k8c.io/bulward/pkg/apis/core/v1alpha1"

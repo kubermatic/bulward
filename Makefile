@@ -62,12 +62,12 @@ bin/%:
 # This should only be executed once the new crd is added in the apiserver api group.
 generate-apiregister:
 ifdef CI
-	apiregister-gen --input-dirs github.com/kubermatic/bulward/pkg/apis/apiserver/... --input-dirs github.com/kubermatic/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
+	apiregister-gen --input-dirs k8c.io/bulward/pkg/apis/apiserver/... --input-dirs k8c.io/bulward/pkg/apis --go-header-file ./hack/boilerplate/boilerplate.go.txt
 	@rm -Rf ./plugin
 else
 	@docker run --rm -e CI=true \
-		-w /go/src/github.com/kubermatic/bulward \
-		-v $(PWD):/go/src/github.com/kubermatic/bulward \
+		-w /go/src/k8c.io/bulward \
+		-v $(PWD):/go/src/k8c.io/bulward \
 		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate-apiregister
@@ -78,8 +78,8 @@ ifdef CI
 	@hack/codegen.sh
 else
 	@docker run --rm -e CI=true \
-		-w /go/src/github.com/kubermatic/bulward \
-		-v $(PWD):/go/src/github.com/kubermatic/bulward \
+		-w /go/src/k8c.io/bulward \
+		-v $(PWD):/go/src/k8c.io/bulward \
 		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate

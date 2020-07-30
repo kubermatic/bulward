@@ -34,11 +34,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	"github.com/kubermatic/bulward/pkg/apis"
-	apiserverapi "github.com/kubermatic/bulward/pkg/apis/apiserver"
-	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
-	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/bulward/pkg/openapi"
+	"k8c.io/bulward/pkg/apis"
+	apiserverapi "k8c.io/bulward/pkg/apis/apiserver"
+	apiserverv1alpha1 "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
+	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"
+	"k8c.io/bulward/pkg/openapi"
 )
 
 type flags struct {
