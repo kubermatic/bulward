@@ -25,13 +25,13 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Organization
+// Project
 // +k8s:openapi-gen=true
-// +resource:path=organizations,rest=OrganizationREST
-type Organization struct {
+// +resource:path=projects,rest=ProjectREST
+type Project struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   storagev1alpha1.OrganizationSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
-	Status storagev1alpha1.OrganizationStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+	Spec   storagev1alpha1.ProjectSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status storagev1alpha1.ProjectStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }

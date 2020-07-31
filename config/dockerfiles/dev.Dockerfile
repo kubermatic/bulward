@@ -26,14 +26,19 @@ RUN apt-get -qq update && \
 # Allowed to use path@version
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
-ENV PATH=${PATH}:/usr/local/go/bin:${GOPATH}/bin
+ENV PATH=${PATH}:/usr/local/go/bin:/usr/local/protoc/bin:${GOPATH}/bin
 # this GOROOT ENV is needed for apiregister-gen.
 ENV GOROOT=/usr/local/go
 
 # versions without the `v` prefix
 ARG APISERVER_BUILDER_VERSION
 ARG CONTROLLER_GEN_VERSION
+ARG PROTOBUF_VERSION
 
-RUN echo $PATH && go get golang.org/x/tools/cmd/goimports && \
+RUN echo $PATH && go get golang.org/x/tools/cmd/goimports && go get github.com/gogo/protobuf/protoc-gen-gogo &&\
   go get sigs.k8s.io/controller-tools/cmd/controller-gen@v${CONTROLLER_GEN_VERSION} && \
-  curl -sL https://github.com/kubernetes-sigs/apiserver-builder-alpha/releases/download/v${APISERVER_BUILDER_VERSION}/apiserver-builder-alpha-v${APISERVER_BUILDER_VERSION}-linux-amd64.tar.gz | tar -xz -C /usr/local
+  curl -sL https://github.com/kubernetes-sigs/apiserver-builder-alpha/releases/download/v${APISERVER_BUILDER_VERSION}/apiserver-builder-alpha-v${APISERVER_BUILDER_VERSION}-linux-amd64.tar.gz | tar -xz -C /usr/local &&\
+  curl -sL --output /tmp/protoc.zip https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip && \
+  mkdir -p /usr/local/protoc && \
+  unzip /tmp/protoc.zip -d /usr/local/protoc && \
+  rm /tmp/protoc.zip

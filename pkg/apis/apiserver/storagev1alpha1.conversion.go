@@ -58,5 +58,34 @@ func Corev1alpha1RegisterConversion(scheme *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := scheme.AddConversionFunc((*Project)(nil), (*storagev1alpha1.Project)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		in := a.(*Project)
+		out := b.(*storagev1alpha1.Project)
+		if err := Convert_apiserver_Project_To_v1alpha1_Project(in, out, scope); err != nil {
+			return err
+		}
+		for i := range out.ManagedFields {
+			out.ManagedFields[i].APIVersion = storagev1alpha1.GroupVersion.String()
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := scheme.AddConversionFunc((*storagev1alpha1.Project)(nil), (*Project)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		in := a.(*storagev1alpha1.Project)
+		out := b.(*Project)
+		if err := Convert_v1alpha1_Project_To_apiserver_Project(in, out, scope); err != nil {
+			return err
+		}
+		for i := range out.ManagedFields {
+			out.ManagedFields[i].APIVersion = schema.GroupVersion{
+				Group:   SchemeGroupVersion.Group,
+				Version: "v1alpha1",
+			}.String()
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 	return nil
 }

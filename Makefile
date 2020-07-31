@@ -23,10 +23,11 @@ VERSION = v1
 
 # Dev Image to use
 # Always bump this version, when changing ANY component version below.
-DEV_IMAGE_TAG=v1
+DEV_IMAGE_TAG=v2
 # Versions used to build DEV image:
 export CONTROLLER_GEN_VERSION=0.2.9
 export APISERVER_BUILDER_VERSION=1.18.0
+export PROTOBUF_VERSION=3.12.4
 
 # Debug BUILD_ARGS
 # BUILD_ARGS?=-gcflags "all=-N -l"
@@ -184,7 +185,8 @@ build-image-dev: require-docker
 	@cp -a config/dockerfiles/dev.Dockerfile bin/image/dev/Dockerfile
 	@docker build -t ${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} bin/image/dev \
 		--build-arg CONTROLLER_GEN_VERSION=${CONTROLLER_GEN_VERSION} \
-		--build-arg APISERVER_BUILDER_VERSION=${APISERVER_BUILDER_VERSION}
+		--build-arg APISERVER_BUILDER_VERSION=${APISERVER_BUILDER_VERSION} \
+		--build-arg PROTOBUF_VERSION=${PROTOBUF_VERSION}
 
 push-image-dev: build-image-dev
 	@docker push ${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG}
