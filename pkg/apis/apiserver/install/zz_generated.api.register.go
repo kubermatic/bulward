@@ -41,6 +41,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(apiserver.SchemeGroupVersion,
 		&apiserver.Organization{},
 		&apiserver.OrganizationList{},
+		&apiserver.Project{},
+		&apiserver.ProjectList{},
 	)
 	return nil
 }

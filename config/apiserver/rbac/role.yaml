@@ -41,3 +41,16 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - storage.bulward.io
+  resources:
+  - projects
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch

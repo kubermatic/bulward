@@ -34,6 +34,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.Organization":        schema_pkg_apis_apiserver_v1alpha1_Organization(ref),
 		"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.OrganizationList":    schema_pkg_apis_apiserver_v1alpha1_OrganizationList(ref),
+		"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.Project":             schema_pkg_apis_apiserver_v1alpha1_Project(ref),
+		"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.ProjectList":         schema_pkg_apis_apiserver_v1alpha1_ProjectList(ref),
 		"k8c.io/bulward/pkg/apis/storage/v1alpha1.ObjectReference":       schema_pkg_apis_storage_v1alpha1_ObjectReference(ref),
 		"k8c.io/bulward/pkg/apis/storage/v1alpha1.Organization":          schema_pkg_apis_storage_v1alpha1_Organization(ref),
 		"k8c.io/bulward/pkg/apis/storage/v1alpha1.OrganizationCondition": schema_pkg_apis_storage_v1alpha1_OrganizationCondition(ref),
@@ -433,6 +435,96 @@ func schema_pkg_apis_apiserver_v1alpha1_OrganizationList(ref common.ReferenceCal
 		},
 		Dependencies: []string{
 			"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.Organization", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_apiserver_v1alpha1_Project(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Project",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8c.io/bulward/pkg/apis/storage/v1alpha1.ProjectSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8c.io/bulward/pkg/apis/storage/v1alpha1.ProjectStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8c.io/bulward/pkg/apis/storage/v1alpha1.ProjectSpec", "k8c.io/bulward/pkg/apis/storage/v1alpha1.ProjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_apiserver_v1alpha1_ProjectList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("k8c.io/bulward/pkg/apis/apiserver/v1alpha1.Project"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"k8c.io/bulward/pkg/apis/apiserver/v1alpha1.Project", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
