@@ -14,14 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Api versions allow the api contract for a resource to be changed while keeping
-// backward compatibility by support multiple concurrent versions
-// of the same resource
+package apiserver
 
-// +k8s:openapi-gen=true
-// +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/apiserver
-// +k8s:defaulter-gen=TypeMeta
-// +groupName=apiserver.bulward.io
-// +k8s:protobuf-gen=package
-package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
+import (
+	"context"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/klog"
+)
+
+// Validate checks that an instance of Project is well formed
+func (ProjectStrategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
+	o := obj.(*Project)
+	klog.V(5).Infof("Validating fields for Project %s", o.Name)
+	errors := field.ErrorList{}
+	// perform validation here and add to errors using field.Invalid
+	return errors
+}

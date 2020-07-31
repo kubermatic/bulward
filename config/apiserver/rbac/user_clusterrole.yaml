@@ -9,5 +9,6 @@ rules:
   - apiserver.bulward.io
   resources:
   - organizations
+  - projects
   verbs:
   - '*'
