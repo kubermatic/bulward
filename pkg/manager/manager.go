@@ -22,13 +22,12 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"k8c.io/utils/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-
-	"github.com/kubermatic/utils/pkg/util"
 
 	corev1alpha1 "k8c.io/bulward/pkg/apis/core/v1alpha1"
 	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"

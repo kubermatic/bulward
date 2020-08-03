@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8c.io/utils/pkg/testutil"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +35,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	"github.com/kubermatic/utils/pkg/testutil"
 
 	apiserverv1alpha1 "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
 	corev1alpha1 "k8c.io/bulward/pkg/apis/core/v1alpha1"
