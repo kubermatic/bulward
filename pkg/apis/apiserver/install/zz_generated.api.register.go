@@ -23,8 +23,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
-	"github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
+	"k8c.io/bulward/pkg/apis/apiserver"
+	"k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
 )
 
 func init() {

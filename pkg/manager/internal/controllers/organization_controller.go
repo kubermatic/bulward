@@ -34,8 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/bulward/pkg/templates"
+	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"
+	"k8c.io/bulward/pkg/templates"
 )
 
 const (

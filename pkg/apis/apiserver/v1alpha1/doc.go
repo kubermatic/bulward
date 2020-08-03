@@ -20,8 +20,8 @@ limitations under the License.
 
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/apiserver
+// +k8s:conversion-gen=k8c.io/bulward/pkg/apis/apiserver
 // +k8s:defaulter-gen=TypeMeta
 // +groupName=apiserver.bulward.io
 // +k8s:protobuf-gen=package
-package v1alpha1 // import "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
+package v1alpha1 // import "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"

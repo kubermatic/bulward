@@ -16,7 +16,7 @@ limitations under the License.
 
 // +k8s:deepcopy-gen=package,register
 // +groupName=apiserver.bulward.io
-// +k8s:conversion-gen=github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1
+// +k8s:conversion-gen=k8c.io/bulward/pkg/apis/storage/v1alpha1
 
 // Package apiserver is the internal version of the API.
 package apiserver

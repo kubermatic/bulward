@@ -1,4 +1,4 @@
 
 version: "1"
 domain: bulward.io
-repo: github.com/kubermatic/bulward
+repo: k8c.io/bulward

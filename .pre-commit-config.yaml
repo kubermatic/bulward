@@ -23,7 +23,7 @@ repos:
   hooks:
   - id: goimports
     name: goimports
-    entry: goimports -local github.com/kubermatic/bulward -w
+    entry: goimports -local k8c.io/bulward -w
     language: system
     types: [go]
   - id: LICENSE

@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
-	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
+	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"
 )
 
 const (
