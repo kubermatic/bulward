@@ -20,21 +20,18 @@ import (
 	"context"
 	"fmt"
 
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 
@@ -44,13 +41,6 @@ import (
 const (
 	internalProjectResource = "projects"
 	externalProjectResource = "projects"
-)
-
-var (
-	qualifiedProjectResource = schema.GroupResource{
-		Group:    SchemeGroupVersion.Group,
-		Resource: externalProjectResource,
-	}
 )
 
 // +k8s:deepcopy-gen=false
@@ -134,7 +124,7 @@ func (p *ProjectREST) Get(ctx context.Context, name string, options *metav1.GetO
 	if err != nil {
 		return nil, err
 	}
-	if err := p.checkMembership(ctx, project); err != nil {
+	if err := checkMembership(ctx, project); err != nil {
 		return nil, err
 	}
 	return project, nil
@@ -157,7 +147,7 @@ func (p *ProjectREST) List(ctx context.Context, options *internalversion.ListOpt
 	lst := spl.Items
 	spl.Items = nil
 	for _, it := range lst {
-		visible, err := p.isMember(ctx, &it)
+		visible, err := isMember(ctx, &it)
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +175,7 @@ func (p *ProjectREST) Create(ctx context.Context, obj runtime.Object, createVali
 	// Here we're not using checkOwnership since we're returning different error.
 	// User should always include himself/herself in the Owners list, otherwise, we return BadRequest error to
 	// indicate the request is invalid and cannot be processed.
-	isOwner, err := p.containsUser(ctx, project.Spec.Owners)
+	isOwner, err := containsUser(ctx, project.Spec.Owners)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +226,7 @@ func (p *ProjectREST) Update(ctx context.Context, name string, objInfo rest.Upda
 	if err := createValidation(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
-	if err := p.checkOwnership(ctx, oldObj); err != nil {
+	if err := checkOwnership(ctx, oldObj); err != nil {
 		return nil, false, err
 	}
 	newObj, err := objInfo.UpdatedObject(ctx, oldObj)
@@ -276,7 +266,7 @@ func (p *ProjectREST) Delete(ctx context.Context, name string, deleteValidation 
 	if err := deleteValidation(ctx, obj); err != nil {
 		return obj, false, err
 	}
-	if err := p.checkOwnership(ctx, obj.(*Project)); err != nil {
+	if err := checkOwnership(ctx, obj.(*Project)); err != nil {
 		return nil, false, err
 	}
 	err = p.dynamicRI.Namespace(request.NamespaceValue(ctx)).Delete(ctx, name, *options)
@@ -289,7 +279,7 @@ func (p *ProjectREST) DeleteCollection(ctx context.Context, deleteValidation res
 		return nil, err
 	}
 	for _, project := range projects.(*ProjectList).Items {
-		if err := p.checkOwnership(ctx, &project); err != nil {
+		if err := checkOwnership(ctx, &project); err != nil {
 			return nil, err
 		}
 	}
@@ -336,7 +326,7 @@ func (p *ProjectREST) Watch(ctx context.Context, options *internalversion.ListOp
 					return
 				}
 				ev.Object = project
-				visible, err := p.isMember(ctx, project)
+				visible, err := isMember(ctx, project)
 				if err != nil {
 					res <- internalErrorWatchEvent(err)
 					return
@@ -348,88 +338,4 @@ func (p *ProjectREST) Watch(ctx context.Context, options *internalversion.ListOp
 		}
 	}()
 	return pw, nil
-}
-
-// TODO extract the ownership/membership functions for org and project
-// checkOwnership checks if the calling user is owner of the project, and if not returns appropriate error:
-// NotFound if non-member, Forbidden if member
-func (p *ProjectREST) checkOwnership(ctx context.Context, project *Project) error {
-	attrs, err := filters.GetAuthorizerAttributes(ctx)
-	if err != nil {
-		return err
-	}
-	if err := p.checkMembership(ctx, project); err != nil {
-		return err
-	}
-	isOwner, err := p.containsUser(ctx, project.Spec.Owners)
-	if err != nil {
-		return err
-	}
-	if !isOwner {
-		return apierrors.NewForbidden(
-			qualifiedProjectResource,
-			project.Name,
-			fmt.Errorf("project ownership is required for %s operation", attrs.GetVerb()),
-		)
-	}
-	return nil
-}
-
-// checkMembership checks if the calling user is project member, and if not returns NotFound error
-func (o *ProjectREST) checkMembership(ctx context.Context, project *Project) error {
-	visible, err := o.isMember(ctx, project)
-	if err != nil {
-		return err
-	}
-	if !visible {
-		return apierrors.NewNotFound(qualifiedProjectResource, project.Name)
-	}
-	return nil
-}
-
-// isMember checks if the calling user is project member
-func (p *ProjectREST) isMember(ctx context.Context, project *Project) (bool, error) {
-	return p.containsUser(ctx,
-		append(
-			// This is important for seeing project you own before controller syncs status
-			// otherwise a watch misses create event
-			project.Spec.Owners,
-			project.Status.Members...,
-		),
-	)
-}
-
-// containsUser checks whether the calling user is in the subject list
-func (o *ProjectREST) containsUser(ctx context.Context, subjects []rbacv1.Subject) (bool, error) {
-	attrs, err := filters.GetAuthorizerAttributes(ctx)
-	if err != nil {
-		return false, err
-	}
-	user := attrs.GetUser()
-	if user == nil {
-		klog.Warning("unknown user, you may running API extension server with --delegated-auth=false")
-		return true, nil
-	}
-
-	for _, sub := range subjects {
-		switch sub.Kind {
-		case rbacv1.UserKind:
-			if sub.Name == user.GetName() {
-				return true, nil
-			}
-		case rbacv1.GroupKind:
-			for _, grp := range user.GetGroups() {
-				if sub.Name == grp {
-					return true, nil
-				}
-			}
-		case rbacv1.ServiceAccountKind:
-			if fmt.Sprintf("system:serviceaccount:%s:%s", sub.Namespace, sub.Name) == user.GetName() {
-				return true, nil
-			}
-		default:
-			return false, fmt.Errorf("unknown subject's kind: %s, %v", sub.Kind, sub)
-		}
-	}
-	return false, err
 }
