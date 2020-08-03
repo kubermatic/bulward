@@ -22,9 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
-	_ "github.com/kubermatic/bulward/pkg/apis/apiserver/install" // Install the apiserver group
-	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
+	"k8c.io/bulward/pkg/apis/apiserver"
+	_ "k8c.io/bulward/pkg/apis/apiserver/install" // Install the apiserver group
+	apiserverv1alpha1 "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
 )
 
 var (
@@ -44,7 +44,7 @@ func GetAllApiBuilders() []*builders.APIGroupBuilder {
 
 var apiserverApiGroup = builders.NewApiGroupBuilder(
 	"apiserver.bulward.io",
-	"github.com/kubermatic/bulward/pkg/apis/apiserver").
+	"k8c.io/bulward/pkg/apis/apiserver").
 	WithUnVersionedApi(apiserver.ApiVersion).
 	WithVersionedApis(
 		apiserverv1alpha1.ApiVersion,

@@ -36,10 +36,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	apiserverv1alpha1 "github.com/kubermatic/bulward/pkg/apis/apiserver/v1alpha1"
-	corev1alpha1 "github.com/kubermatic/bulward/pkg/apis/core/v1alpha1"
-	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
-	"github.com/kubermatic/bulward/test/events"
+	apiserverv1alpha1 "k8c.io/bulward/pkg/apis/apiserver/v1alpha1"
+	corev1alpha1 "k8c.io/bulward/pkg/apis/core/v1alpha1"
+	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"
+	"k8c.io/bulward/test/events"
 )
 
 func init() {

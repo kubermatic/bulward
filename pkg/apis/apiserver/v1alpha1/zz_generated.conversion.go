@@ -26,7 +26,7 @@ import (
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 
-	apiserver "github.com/kubermatic/bulward/pkg/apis/apiserver"
+	apiserver "k8c.io/bulward/pkg/apis/apiserver"
 )
 
 func init() {

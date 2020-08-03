@@ -2,7 +2,7 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:proto disable_global
-# gazelle:prefix github.com/kubermatic/bulward
+# gazelle:prefix k8c.io/bulward
 gazelle(
     name = "gazelle",
     command = "fix",

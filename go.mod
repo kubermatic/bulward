@@ -1,4 +1,4 @@
-module github.com/kubermatic/bulward
+module k8c.io/bulward
 
 go 1.14
 

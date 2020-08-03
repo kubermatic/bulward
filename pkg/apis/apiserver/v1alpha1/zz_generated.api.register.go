@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/apiserver-builder-alpha/pkg/builders"
 
-	"github.com/kubermatic/bulward/pkg/apis/apiserver"
+	"k8c.io/bulward/pkg/apis/apiserver"
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {

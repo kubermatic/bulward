@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	storagev1alpha1 "github.com/kubermatic/bulward/pkg/apis/storage/v1alpha1"
+	storagev1alpha1 "k8c.io/bulward/pkg/apis/storage/v1alpha1"
 )
 
 func ConvertToUnstructuredStorageV1Alpha1Project(project *Project, scheme *runtime.Scheme) (*unstructured.Unstructured, error) {

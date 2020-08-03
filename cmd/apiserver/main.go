@@ -19,7 +19,7 @@ package main
 import (
 	"os"
 
-	"github.com/kubermatic/bulward/pkg/apiserver"
+	"k8c.io/bulward/pkg/apiserver"
 )
 
 func main() {
