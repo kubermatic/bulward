@@ -68,7 +68,7 @@ ifdef CI
 else
 	@docker run --rm -e CI=true \
 		-w /go/src/k8c.io/bulward \
-		-v $(PWD):/go/src/k8c.io/bulward \
+		-v $(PWD):/go/src/k8c.io/bulward:delegated \
 		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate-apiregister
@@ -80,7 +80,7 @@ ifdef CI
 else
 	@docker run --rm -e CI=true \
 		-w /go/src/k8c.io/bulward \
-		-v $(PWD):/go/src/k8c.io/bulward \
+		-v $(PWD):/go/src/k8c.io/bulward:delegated \
 		--user "$(id -u):$(id -g)" \
 		${IMAGE_ORG}/bulward-dev:${DEV_IMAGE_TAG} \
 		make generate
