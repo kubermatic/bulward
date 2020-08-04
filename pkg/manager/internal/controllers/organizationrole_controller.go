@@ -64,6 +64,12 @@ func (r *OrganizationRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	return ctrl.Result{}, nil
 }
 
+func (r *OrganizationRoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&corev1alpha1.OrganizationRole{}).
+		Complete(r)
+}
+
 func (r *OrganizationRoleReconciler) handleDeletion(ctx context.Context, log logr.Logger, organizationRole *corev1alpha1.OrganizationRole) error {
 	// Update the OrganizationRole Status to Terminating.
 	readyCondition, _ := organizationRole.Status.GetCondition(corev1alpha1.OrganizationRoleReady)
@@ -82,7 +88,3 @@ func (r *OrganizationRoleReconciler) handleDeletion(ctx context.Context, log log
 	}
 	return nil
 }
-
-//
-// func (r *OrganizationRoleReconciler) reconcileRole(ctx context.Context, organizationRole *corev1alpha1.OrganizationRole) error {
-// }
