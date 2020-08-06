@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	"k8c.io/utils/pkg/util"
@@ -42,6 +43,9 @@ type OrganizationRoleReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
+
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroles,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroles/status,verbs=get;update;patch
 
 func (r *OrganizationRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -67,10 +71,16 @@ func (r *OrganizationRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		}
 	}
 
-	if err := r.reconcileRole(ctx, organizationRole); err != nil {
+	acceptedRules, err := r.reconcileRole(ctx, organizationRole)
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("reconciling Role: %w", err)
 	}
 
+	var isChanged bool
+	if !reflect.DeepEqual(organizationRole.Status.AcceptedRules, acceptedRules) {
+		organizationRole.Status.AcceptedRules = acceptedRules
+		isChanged = true
+	}
 	if !organizationRole.IsReady() {
 		// Update OrganizationRole Status
 		organizationRole.Status.ObservedGeneration = organizationRole.Generation
@@ -80,6 +90,9 @@ func (r *OrganizationRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 			Reason:  "SetupComplete",
 			Message: "OrganizationRole setup is complete.",
 		})
+		isChanged = true
+	}
+	if isChanged {
 		if err := r.Status().Update(ctx, organizationRole); err != nil {
 			return ctrl.Result{}, fmt.Errorf("updating OrganizationRole status: %w", err)
 		}
@@ -133,16 +146,14 @@ func (r *OrganizationRoleReconciler) handleDeletion(ctx context.Context, log log
 	return nil
 }
 
-func (r *OrganizationRoleReconciler) reconcileRole(ctx context.Context, organizationRole *corev1alpha1.OrganizationRole) error {
+func (r *OrganizationRoleReconciler) reconcileRole(ctx context.Context, organizationRole *corev1alpha1.OrganizationRole) (acceptedRules []rbacv1.PolicyRule, err error) {
 	organizationRoleTemplates := &corev1alpha1.OrganizationRoleTemplateList{}
-	if err := r.List(ctx, organizationRoleTemplates); err != nil {
-		return err
+	if err = r.List(ctx, organizationRoleTemplates); err != nil {
+		return
 	}
 	var maxRules []rbacv1.PolicyRule
 	for _, template := range organizationRoleTemplates.Items {
-		if template.IsReady() {
-			maxRules = append(maxRules, template.Spec.Rules...)
-		}
+		maxRules = append(maxRules, template.Spec.Rules...)
 	}
 	policyRoles := intersection.IntersectPolicyRules(maxRules, organizationRole.Spec.Rules)
 
@@ -154,14 +165,14 @@ func (r *OrganizationRoleReconciler) reconcileRole(ctx context.Context, organiza
 		Rules: policyRoles,
 	}
 	desiredRole := role.DeepCopy()
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, role, func() error {
-		if err := controllerutil.SetControllerReference(organizationRole, role, r.Scheme); err != nil {
+	if _, err = controllerutil.CreateOrUpdate(ctx, r.Client, role, func() error {
+		if err = controllerutil.SetControllerReference(organizationRole, role, r.Scheme); err != nil {
 			return fmt.Errorf("setting owner reference: %w", err)
 		}
 		role.Rules = desiredRole.Rules
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return role.Rules, nil
 }
