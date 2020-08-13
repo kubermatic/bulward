@@ -108,6 +108,14 @@ func run(flags *flags, log logr.Logger) error {
 		return fmt.Errorf("creating OrganizationRoleTemplate controller: %w", err)
 	}
 
+	if err = (&controllers.OrganizationRoleReconciler{
+		Client: mgr.GetClient(),
+		Log:    log.WithName("controllers").WithName("OrganizationRole"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("creating OrganizationRole controller: %w", err)
+	}
+
 	if err = (&controllers.ProjectReconciler{
 		Client: mgr.GetClient(),
 		Log:    log.WithName("controllers").WithName("Project"),

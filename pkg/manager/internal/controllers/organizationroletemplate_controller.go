@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/go-logr/logr"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -49,6 +50,7 @@ type OrganizationRoleTemplateReconciler struct {
 // +kubebuilder:rbac:groups=storage.bulward.io,resources=projects,verbs=get;list;watch;update
 // The following permission of apiserver.bulward.io is needed for service account to create role for owner to access projects.
 // +kubebuilder:rbac:groups=apiserver.bulward.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=bulward.io,resources=organizationroles,verbs=get;list;watch;create;update;bind
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete;bind
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
@@ -74,15 +76,23 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 	}
 
 	// Reconcile Role/RoleBindings in Organization namespaces.
+	var unSetUpOrganization []string
 	if organizationRoleTemplate.HasScope(corev1alpha1.RoleTemplateScopeOrganization) {
 		for _, organization := range organizations.Items {
 			if !organization.IsReady() {
 				// skip Unready Organizations.
 				continue
 			}
-			if err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization); err != nil {
+			organizationRole, err := r.reconcileRBACForOrganization(ctx, organizationRoleTemplate, &organization)
+			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("reconcling Organization RBAC: %w", err)
 			}
+
+			if !organizationRole.IsReady() {
+				unSetUpOrganization = append(unSetUpOrganization, organization.Name)
+				continue
+			}
+
 			targets = append(targets, corev1alpha1.RoleTemplateTarget{
 				Kind:               organization.Kind,
 				APIGroup:           organization.GroupVersionKind().Group,
@@ -108,8 +118,13 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 				if !project.IsReady() {
 					continue
 				}
-				if err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project); err != nil {
+				organizationRole, err := r.reconcileRBACForProject(ctx, organizationRoleTemplate, &organization, &project)
+				if err != nil {
 					return ctrl.Result{}, fmt.Errorf("reconcling Project RBAC: %w", err)
+				}
+				if !organizationRole.IsReady() {
+					unSetUpOrganization = append(unSetUpOrganization, organization.Name)
+					continue
 				}
 				targets = append(targets, corev1alpha1.RoleTemplateTarget{
 					Kind:               project.Kind,
@@ -126,8 +141,16 @@ func (r *OrganizationRoleTemplateReconciler) Reconcile(req ctrl.Request) (ctrl.R
 		organizationRoleTemplate.Status.Targets = targets
 		changed = true
 	}
-	if !organizationRoleTemplate.IsReady() {
-		// Update OrganizationRoleTemplate Status
+	if len(unSetUpOrganization) != 0 {
+		organizationRoleTemplate.Status.ObservedGeneration = organizationRoleTemplate.Generation
+		organizationRoleTemplate.Status.SetCondition(corev1alpha1.OrganizationRoleTemplateCondition{
+			Type:    corev1alpha1.OrganizationRoleTemplateReady,
+			Status:  corev1alpha1.ConditionFalse,
+			Reason:  "SetupNotComplete",
+			Message: fmt.Sprintf("RBAC setup is not complete for some organizations [%s]", strings.Join(unSetUpOrganization, ",")),
+		})
+		changed = true
+	} else if !organizationRoleTemplate.IsReady() {
 		organizationRoleTemplate.Status.ObservedGeneration = organizationRoleTemplate.Generation
 		organizationRoleTemplate.Status.SetCondition(corev1alpha1.OrganizationRoleTemplateCondition{
 			Type:    corev1alpha1.OrganizationRoleTemplateReady,
@@ -167,6 +190,7 @@ func (r *OrganizationRoleTemplateReconciler) SetupWithManager(mgr ctrl.Manager) 
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1alpha1.OrganizationRoleTemplate{}).
+		Owns(&corev1alpha1.OrganizationRole{}).
 		Watches(&source.Kind{Type: &storagev1alpha1.Organization{}}, enqueueAllTemplates).
 		Watches(&source.Kind{Type: &storagev1alpha1.Project{}}, enqueueAllTemplates).
 		Complete(r)
@@ -193,17 +217,23 @@ func (r *OrganizationRoleTemplateReconciler) handleDeletion(ctx context.Context,
 	return nil
 }
 
-func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization) error {
+func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization) (*corev1alpha1.OrganizationRole, error) {
 	// Reconcile Role.
-	role := &rbacv1.Role{
+	organizationRole := &corev1alpha1.OrganizationRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      organizationRoleTemplate.Name,
 			Namespace: organization.Status.Namespace.Name,
 		},
-		Rules: organizationRoleTemplate.Spec.Rules,
+		Spec: corev1alpha1.OrganizationRoleSpec{
+			Rules: organizationRoleTemplate.Spec.Rules,
+		},
 	}
-	if err := r.reconcileRole(ctx, role, organizationRoleTemplate); err != nil {
-		return err
+	if err := r.reconcileOrganizationRole(ctx, organizationRole, organizationRoleTemplate); err != nil {
+		return nil, err
+	}
+
+	if !organizationRole.IsReady() {
+		return organizationRole, nil
 	}
 
 	// Reconcile RoleBindings.
@@ -217,27 +247,33 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForOrganization(ctx co
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     "Role",
-				Name:     role.Name,
+				Name:     organizationRole.Name,
 			},
 		}
 		if err := r.reconcileRoleBinding(ctx, roleBinding, organizationRoleTemplate); err != nil {
-			return err
+			return organizationRole, err
 		}
 	}
-	return nil
+	return organizationRole, nil
 }
 
-func (r *OrganizationRoleTemplateReconciler) reconcileRBACForProject(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization, project *storagev1alpha1.Project) error {
-	// Reconcile Role.
-	role := &rbacv1.Role{
+func (r *OrganizationRoleTemplateReconciler) reconcileRBACForProject(ctx context.Context, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate, organization *storagev1alpha1.Organization, project *storagev1alpha1.Project) (*corev1alpha1.OrganizationRole, error) {
+	// Reconcile OrganizationRole.
+	organizationRole := &corev1alpha1.OrganizationRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      organizationRoleTemplate.Name,
 			Namespace: project.Status.Namespace.Name,
 		},
-		Rules: organizationRoleTemplate.Spec.Rules,
+		Spec: corev1alpha1.OrganizationRoleSpec{
+			Rules: organizationRoleTemplate.Spec.Rules,
+		},
 	}
-	if err := r.reconcileRole(ctx, role, organizationRoleTemplate); err != nil {
-		return err
+	if err := r.reconcileOrganizationRole(ctx, organizationRole, organizationRoleTemplate); err != nil {
+		return nil, err
+	}
+
+	if !organizationRole.IsReady() {
+		return organizationRole, nil
 	}
 
 	// Reconcile RoleBindings.
@@ -252,27 +288,27 @@ func (r *OrganizationRoleTemplateReconciler) reconcileRBACForProject(ctx context
 			RoleRef: rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     "Role",
-				Name:     role.Name,
+				Name:     organizationRole.Name,
 			},
 		}
 		if err := r.reconcileRoleBinding(ctx, roleBinding, organizationRoleTemplate); err != nil {
-			return err
+			return organizationRole, err
 		}
 	}
-	return nil
+	return organizationRole, nil
 }
 
-func (r *OrganizationRoleTemplateReconciler) reconcileRole(ctx context.Context, role *rbacv1.Role, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
-	desiredRole := role.DeepCopy()
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, role, func() error {
+func (r *OrganizationRoleTemplateReconciler) reconcileOrganizationRole(ctx context.Context, organizationRole *corev1alpha1.OrganizationRole, organizationRoleTemplate *corev1alpha1.OrganizationRoleTemplate) error {
+	desiredRole := organizationRole.DeepCopy()
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, organizationRole, func() error {
 		if err := controllerutil.SetControllerReference(
-			organizationRoleTemplate, role, r.Scheme); err != nil {
+			organizationRoleTemplate, organizationRole, r.Scheme); err != nil {
 			return fmt.Errorf("set controller reference for Role: %w", err)
 		}
-		role.Rules = desiredRole.Rules
+		organizationRole.Spec.Rules = desiredRole.Spec.Rules
 		return nil
 	}); err != nil {
-		return fmt.Errorf("creating or updating Role: %w", err)
+		return fmt.Errorf("creating or updating OrganizationRole: %w", err)
 	}
 	return nil
 }

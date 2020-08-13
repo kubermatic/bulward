@@ -1,0 +1,216 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.9
+  creationTimestamp: null
+  name: organizationroles.bulward.io
+spec:
+  group: bulward.io
+  names:
+    kind: OrganizationRole
+    listKind: OrganizationRoleList
+    plural: organizationroles
+    singular: organizationrole
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.metadata.displayName
+      name: Display Name
+      type: string
+    - jsonPath: .status.phase
+      name: Status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: OrganizationRole is internal representation for organization-scoped
+          Role in Bulward.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: OrganizationRoleSpec describes the desired state of OrganizationRole.
+            properties:
+              rules:
+                description: Rules defines the Role that this OrganizationRole refers
+                  to.
+                items:
+                  description: PolicyRule holds information that describes a policy
+                    rule, but does not contain information about who the rule applies
+                    to or which namespace the rule applies to.
+                  properties:
+                    apiGroups:
+                      description: APIGroups is the name of the APIGroup that contains
+                        the resources.  If multiple API groups are specified, any
+                        action requested against one of the enumerated resources in
+                        any API group will be allowed.
+                      items:
+                        type: string
+                      type: array
+                    nonResourceURLs:
+                      description: NonResourceURLs is a set of partial urls that a
+                        user should have access to.  *s are allowed, but only as the
+                        full, final step in the path Since non-resource URLs are not
+                        namespaced, this field is only applicable for ClusterRoles
+                        referenced from a ClusterRoleBinding. Rules can either apply
+                        to API resources (such as "pods" or "secrets") or non-resource
+                        URL paths (such as "/api"),  but not both.
+                      items:
+                        type: string
+                      type: array
+                    resourceNames:
+                      description: ResourceNames is an optional white list of names
+                        that the rule applies to.  An empty set means that everything
+                        is allowed.
+                      items:
+                        type: string
+                      type: array
+                    resources:
+                      description: Resources is a list of resources this rule applies
+                        to.  ResourceAll represents all resources.
+                      items:
+                        type: string
+                      type: array
+                    verbs:
+                      description: Verbs is a list of Verbs that apply to ALL the
+                        ResourceKinds and AttributeRestrictions contained in this
+                        rule.  VerbAll represents all kinds.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - verbs
+                  type: object
+                type: array
+            required:
+            - rules
+            type: object
+          status:
+            description: OrganizationRoleStatus represents the observed state of OrganizationRole.
+            properties:
+              acceptedRules:
+                description: AcceptedRules contains the rules that accepted by Bulward.
+                items:
+                  description: PolicyRule holds information that describes a policy
+                    rule, but does not contain information about who the rule applies
+                    to or which namespace the rule applies to.
+                  properties:
+                    apiGroups:
+                      description: APIGroups is the name of the APIGroup that contains
+                        the resources.  If multiple API groups are specified, any
+                        action requested against one of the enumerated resources in
+                        any API group will be allowed.
+                      items:
+                        type: string
+                      type: array
+                    nonResourceURLs:
+                      description: NonResourceURLs is a set of partial urls that a
+                        user should have access to.  *s are allowed, but only as the
+                        full, final step in the path Since non-resource URLs are not
+                        namespaced, this field is only applicable for ClusterRoles
+                        referenced from a ClusterRoleBinding. Rules can either apply
+                        to API resources (such as "pods" or "secrets") or non-resource
+                        URL paths (such as "/api"),  but not both.
+                      items:
+                        type: string
+                      type: array
+                    resourceNames:
+                      description: ResourceNames is an optional white list of names
+                        that the rule applies to.  An empty set means that everything
+                        is allowed.
+                      items:
+                        type: string
+                      type: array
+                    resources:
+                      description: Resources is a list of resources this rule applies
+                        to.  ResourceAll represents all resources.
+                      items:
+                        type: string
+                      type: array
+                    verbs:
+                      description: Verbs is a list of Verbs that apply to ALL the
+                        ResourceKinds and AttributeRestrictions contained in this
+                        rule.  VerbAll represents all kinds.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - verbs
+                  type: object
+                type: array
+              conditions:
+                description: Conditions represents the latest available observations
+                  of a OrganizationRole's current state.
+                items:
+                  description: OrganizationRoleCondition contains details for the
+                    current condition of this OrganizationRole.
+                  properties:
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time the condition
+                        transits from one status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Message is the human readable message indicating
+                        details about last transition.
+                      type: string
+                    reason:
+                      description: Reason is the (brief) reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: Status is the status of the condition, one of ('True',
+                        'False', 'Unknown').
+                      type: string
+                    type:
+                      description: Type is the type of the OrganizationRole condition,
+                        currently ('Ready').
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed
+                  for this OrganizationRole by the controller.
+                format: int64
+                type: integer
+              phase:
+                description: DEPRECATED. Phase represents the current lifecycle state
+                  of this object. Consider this field DEPRECATED, it will be removed
+                  as soon as there is a mechanism to map conditions to strings when
+                  printing the property. This is only for display purpose, for everything
+                  else use conditions.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
