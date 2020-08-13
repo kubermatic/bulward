@@ -81,8 +81,8 @@ func TestOrganizationRole(t *testing.T) {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"example.app.io"},
-					Resources: []string{"resources", "apps"},
-					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+					Resources: []string{"apps", "resources"},
+					Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
 				},
 			},
 		},
@@ -123,7 +123,7 @@ func TestOrganizationRole(t *testing.T) {
 			Rules: []rbacv1.PolicyRule{
 				{
 					APIGroups: []string{"example.app.io"},
-					Resources: []string{"resources", "apps"},
+					Resources: []string{"apps", "resources"},
 					Verbs:     []string{"get", "list", "watch"},
 				},
 			},
