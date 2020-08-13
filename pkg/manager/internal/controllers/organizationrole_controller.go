@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	corev1alpha1 "k8c.io/bulward/pkg/apis/core/v1alpha1"
-	"k8c.io/bulward/pkg/utils/intersection"
+	"k8c.io/bulward/pkg/utils/intersect"
 )
 
 type OrganizationRoleReconciler struct {
@@ -155,7 +155,7 @@ func (r *OrganizationRoleReconciler) reconcileRole(ctx context.Context, organiza
 	for _, template := range organizationRoleTemplates.Items {
 		maxRules = append(maxRules, template.Spec.Rules...)
 	}
-	policyRoles := intersection.IntersectPolicyRules(maxRules, organizationRole.Spec.Rules)
+	policyRoles := intersect.PolicyRules(maxRules, organizationRole.Spec.Rules)
 
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{

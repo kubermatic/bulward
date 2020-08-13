@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intersection
+package intersect
 
 import (
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func IntersectPolicyRules(rules1, rules2 []rbacv1.PolicyRule) []rbacv1.PolicyRule {
+func PolicyRules(rules1, rules2 []rbacv1.PolicyRule) []rbacv1.PolicyRule {
 	var newRules []rbacv1.PolicyRule
 	for _, r1 := range rules1 {
 		for _, r2 := range rules2 {
-			rule := intersectPolicyRule(&r1, &r2)
+			rule := PolicyRule(&r1, &r2)
 			if rule != nil {
 				newRules = append(newRules, *rule)
 			}
@@ -33,7 +34,7 @@ func IntersectPolicyRules(rules1, rules2 []rbacv1.PolicyRule) []rbacv1.PolicyRul
 	return newRules
 }
 
-func intersectPolicyRule(rule1, rule2 *rbacv1.PolicyRule) *rbacv1.PolicyRule {
+func PolicyRule(rule1, rule2 *rbacv1.PolicyRule) *rbacv1.PolicyRule {
 	verbs := intersectVerbs(rule1.Verbs, rule2.Verbs)
 	if len(verbs) == 0 {
 		return nil
@@ -131,14 +132,5 @@ func intersectNonResourceURLs(nonResourceURLs1, nonResourceURLs2 []string) []str
 }
 
 func intersection(s1, s2 []string) (inter []string) {
-	hash := make(map[string]struct{})
-	for _, s := range s1 {
-		hash[s] = struct{}{}
-	}
-	for _, s := range s2 {
-		if _, ok := hash[s]; ok {
-			inter = append(inter, s)
-		}
-	}
-	return
+	return sets.NewString(s1...).Intersection(sets.NewString(s2...)).List()
 }

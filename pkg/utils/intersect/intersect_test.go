@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intersection
+package intersect
 
 import (
 	"testing"
@@ -85,7 +85,7 @@ func TestIntersectPolicyRule(t *testing.T) {
 			expectedIntersectionRule: &rbacv1.PolicyRule{
 				APIGroups: []string{"apiserver.bulward.io"},
 				Resources: []string{"projects"},
-				Verbs:     []string{"get", "list", "watch", "create", "update"},
+				Verbs:     []string{"create", "get", "list", "update", "watch"},
 			},
 		},
 		{
@@ -106,7 +106,7 @@ func TestIntersectPolicyRule(t *testing.T) {
 				APIGroups:     []string{"apiserver.bulward.io"},
 				Resources:     []string{"projects"},
 				ResourceNames: []string{"aaa", "bbb"},
-				Verbs:         []string{"get", "list", "watch", "create", "update"},
+				Verbs:         []string{"create", "get", "list", "update", "watch"},
 			},
 		},
 		{
@@ -120,14 +120,13 @@ func TestIntersectPolicyRule(t *testing.T) {
 				NonResourceURLs: []string{"resource/aaa"},
 			},
 			expectedIntersectionRule: &rbacv1.PolicyRule{
-				Verbs:           []string{"get", "list", "watch", "create", "update"},
+				Verbs:           []string{"create", "get", "list", "update", "watch"},
 				NonResourceURLs: []string{"resource/aaa"},
 			},
 		},
 	}
 	for _, test := range tests {
-		assert.Equal(t, test.expectedIntersectionRule, intersectPolicyRule(test.rule1, test.rule2))
-
+		assert.Equal(t, test.expectedIntersectionRule, PolicyRule(test.rule1, test.rule2))
 	}
 }
 
