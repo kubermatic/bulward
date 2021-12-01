@@ -33,6 +33,25 @@ rules:
 - apiGroups:
   - bulward.io
   resources:
+  - organizationroles
+  verbs:
+  - bind
+  - create
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - bulward.io
+  resources:
+  - organizationroles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - bulward.io
+  resources:
   - organizationroletemplates
   verbs:
   - create

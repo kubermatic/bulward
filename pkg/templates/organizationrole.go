@@ -75,6 +75,13 @@ func RBACAdminOrganizationRoleTemplate() *corev1alpha1.OrganizationRoleTemplate 
 			},
 			Rules: []rbacv1.PolicyRule{
 				{
+					APIGroups: []string{"bulward.io"},
+					Resources: []string{"organizationroles"},
+					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},
+				},
+				// This is still needed for owner to get the role in storage_project_test.go, this permission will be revoked
+				// once we have both OrganizationRole and ProjectRole implemented.
+				{
 					APIGroups: []string{rbacv1.GroupName},
 					Resources: []string{"roles"},
 					Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete", "bind"},

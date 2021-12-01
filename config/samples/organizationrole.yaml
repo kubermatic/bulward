@@ -1,0 +1,19 @@
+apiVersion: bulward.io/v1alpha1
+kind: OrganizationRole
+metadata:
+  name: rbac-sub-role
+  namespace: organization-a
+spec:
+  rules:
+    - apiGroups:
+        - bulward.io
+      resources:
+        - organizationroles
+        - organizationfjl
+      verbs:
+        - get
+        - create
+        - update
+        - patch
+        - bind
+        - delete
