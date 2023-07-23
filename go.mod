@@ -3,19 +3,19 @@ module k8c.io/bulward
 go 1.14
 
 require (
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.2.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gogo/protobuf v1.3.1
 	github.com/kubermatic/utils v0.0.0-20200706114720-916dc1d97253
 	github.com/spf13/cobra v1.0.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.6.1
 	k8c.io/utils v0.0.0-20200731080835-39ab8a8d6830
-	k8s.io/api v0.18.5
-	k8s.io/apimachinery v0.18.5
+	k8s.io/api v0.20.0
+	k8s.io/apimachinery v0.20.0
 	k8s.io/apiserver v0.18.5
-	k8s.io/client-go v0.18.5
+	k8s.io/client-go v0.20.0
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
+	k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
 	sigs.k8s.io/apiserver-builder-alpha v1.18.0
 	sigs.k8s.io/controller-runtime v0.6.0
 )
